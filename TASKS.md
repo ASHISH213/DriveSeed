@@ -1,3 +1,4 @@
+
 # TASKS.md
 
 Work one task at a time. For each task: ask the agent for a plan, approve it, let it implement, run it yourself, then commit. Tick the box only when the **Done when** line is true.
@@ -14,7 +15,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* `ruff check`, `mypy app` and `pytest` all run (even with one trivial test) and pass.
 - [x] **M0.2 FastAPI app with health check.** `GET /healthz` returns `{"status":"ok"}`; config loaded from environment in `core/config.py` including `PROFILE`.
   *Done when:* the endpoint works and a test covers it.
-- [ ] **M0.3 Docker Compose.** Services `api`, `postgres`, `redis`; API connects to both.
+- [x] **M0.3 Docker Compose.** Services `api`, `postgres`, `redis`; API connects to both.
   *Done when:* `docker compose up --build` starts everything and `/healthz` responds at `localhost:8000`.
 - [ ] **M0.4 Database and migrations.** SQLAlchemy base, Alembic set up, first migration creating `users` and `tasks` tables.
   *Done when:* `alembic upgrade head` creates the tables in the Compose database.
