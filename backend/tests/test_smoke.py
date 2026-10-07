@@ -1,8 +1,8 @@
-"""Smoke tests for project skeleton."""
+"""Smoke tests for FastAPI application."""
 
-from app.main import get_app_version
+from app.main import app
 
 
-def test_get_app_version() -> None:
-    """Verify smoke test passes and version is returned."""
-    assert get_app_version() == "0.1.0"
+def test_app_version() -> None:
+    """Verify application version."""
+    assert app.version == "0.1.0"

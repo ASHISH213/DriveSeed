@@ -12,7 +12,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 ## M0: Project skeleton (about 1 week)
 - [x] **M0.1 Repo and tooling.** Create the folder layout from `AGENTS.md`, `pyproject.toml` (ruff, mypy, pytest), `.gitignore`, `.env.example`, README with run instructions.
   *Done when:* `ruff check`, `mypy app` and `pytest` all run (even with one trivial test) and pass.
-- [ ] **M0.2 FastAPI app with health check.** `GET /healthz` returns `{"status":"ok"}`; config loaded from environment in `core/config.py` including `PROFILE`.
+- [x] **M0.2 FastAPI app with health check.** `GET /healthz` returns `{"status":"ok"}`; config loaded from environment in `core/config.py` including `PROFILE`.
   *Done when:* the endpoint works and a test covers it.
 - [ ] **M0.3 Docker Compose.** Services `api`, `postgres`, `redis`; API connects to both.
   *Done when:* `docker compose up --build` starts everything and `/healthz` responds at `localhost:8000`.
