@@ -1,0 +1,1 @@
+"""DriveSeed backend application package."""
