@@ -17,7 +17,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* the endpoint works and a test covers it.
 - [x] **M0.3 Docker Compose.** Services `api`, `postgres`, `redis`; API connects to both.
   *Done when:* `docker compose up --build` starts everything and `/healthz` responds at `localhost:8000`.
-- [ ] **M0.4 Database and migrations.** SQLAlchemy base, Alembic set up, first migration creating `users` and `tasks` tables.
+- [x] **M0.4 Database and migrations.** SQLAlchemy base, Alembic set up, first migration creating `users` and `tasks` tables.
   *Done when:* `alembic upgrade head` creates the tables in the Compose database.
 - [ ] **M0.5 Interfaces.** Add the Protocols in `app/interfaces/` exactly as in `ARCHITECTURE.md` section 3, plus in-memory fake implementations for tests.
   *Done when:* fakes pass a small contract test for each interface.
