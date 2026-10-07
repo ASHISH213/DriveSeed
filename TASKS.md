@@ -19,7 +19,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* `docker compose up --build` starts everything and `/healthz` responds at `localhost:8000`.
 - [x] **M0.4 Database and migrations.** SQLAlchemy base, Alembic set up, first migration creating `users` and `tasks` tables.
   *Done when:* `alembic upgrade head` creates the tables in the Compose database.
-- [ ] **M0.5 Interfaces.** Add the Protocols in `app/interfaces/` exactly as in `ARCHITECTURE.md` section 3, plus in-memory fake implementations for tests.
+- [x] **M0.5 Interfaces.** Add the Protocols in `app/interfaces/` exactly as in `ARCHITECTURE.md` section 3, plus in-memory fake implementations for tests.
   *Done when:* fakes pass a small contract test for each interface.
 - [ ] **M0.6 Frontend skeleton.** Vite + React + TypeScript + Tailwind + shadcn/ui; tokens from `DESIGN.md` applied; dark/light toggle; FastAPI serves the built bundle.
   *Done when:* the built app loads at `localhost:8000` showing the styled empty `AppShell` in both themes.
