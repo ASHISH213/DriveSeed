@@ -19,6 +19,7 @@ from app.models.user import User
 from app.services.drive import DriveApiStorage
 from app.services.http_download import HttpEngine
 from app.services.task_state import TaskState, TaskStateMachine
+from app.services.torrent import TorrentEngine
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,14 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
         # Ensure temp destination directory exists
         task_dest.mkdir(parents=True, exist_ok=True)
 
-        engine = ctx.get("download_engine") or HttpEngine(allow_local=settings.DEBUG)
+        if task.source_type == "magnet":
+            engine = (
+                ctx.get("torrent_engine")
+                or ctx.get("download_engine")
+                or TorrentEngine(settings=settings)
+            )
+        else:
+            engine = ctx.get("download_engine") or HttpEngine(allow_local=settings.DEBUG)
 
         try:
             # 1. Fetch metadata if size or files are missing

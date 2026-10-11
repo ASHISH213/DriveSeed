@@ -37,7 +37,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* a URL download completes, resumes after being killed midway, and a request to `http://127.0.0.1` is rejected (tests for both).
 - [x] **M1.5 Worker and pipeline.** `arq` worker runs: download → upload to Drive → verify → delete temp files → `completed`.
   *Done when:* adding a direct URL via the API ends with the file in your Drive and the temp folder empty.
-- [ ] **M1.6 Torrent engine.** `TorrentEngine` with `libtorrent`: fetch metadata (file list), selected-file download, pause/resume, progress. Disabled when `PROFILE=colab`.
+- [x] **M1.6 Torrent engine.** `TorrentEngine` with `libtorrent`: fetch metadata (file list), selected-file download, pause/resume, progress. Disabled when `PROFILE=colab`.
   *Done when:* a legal test torrent (for example a Linux distribution ISO's official torrent) downloads and lands in Drive; a test proves the engine refuses to start under `PROFILE=colab`.
 - [ ] **M1.7 Live progress (SSE).** `GET /events` streams task updates (Redis pub/sub).
   *Done when:* `curl -N localhost:8000/events` shows live progress while a task runs.
