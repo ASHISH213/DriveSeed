@@ -27,7 +27,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* a pull request shows all checks green.
 
 ## M1: Core pipeline (about 3 weeks)
-- [ ] **M1.1 Google OAuth login.** Login/callback/logout routes, `drive.file` scope only, session cookie, encrypted refresh token stored in `users`. (Needs a Google Cloud OAuth client in "Testing" mode with your account as a test user.)
+- [x] **M1.1 Google OAuth login.** Login/callback/logout routes, `drive.file` scope only, session cookie, encrypted refresh token stored in `users`. (Needs a Google Cloud OAuth client in "Testing" mode with your account as a test user.)
   *Done when:* you can sign in with Google, see your email in the UI, and the token in the database is encrypted.
 - [ ] **M1.2 Drive storage backend.** `DriveApiStorage`: create root folder "DriveSeed", create folder, resumable upload with progress, MD5/size verification, list, delete, quota.
   *Done when:* a script uploads a 200 MB test file into your Drive and verification passes; unit tests use a fake Drive client.

@@ -38,11 +38,14 @@ class Settings(BaseSettings):
 
     # Security & Encryption (Fernet key for Google Drive refresh tokens)
     FERNET_KEY: str = ""
+    SESSION_COOKIE_NAME: str = "driveseed_session"
+    SESSION_MAX_AGE_SECONDS: int = 14 * 24 * 3600
+    SESSION_SECURE: bool = False
 
     # Google OAuth 2.0
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/callback"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.api.auth import router as auth_router
 from app.core.config import Settings, get_settings
 from app.core.db import check_db_connection, close_db_connection
 from app.core.redis import check_redis_connection, close_redis_connection
@@ -61,6 +62,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database="connected" if db_ok else "disconnected",
             redis="connected" if redis_ok else "disconnected",
         )
+
+    # Register API routers
+    app.include_router(auth_router)
 
     dist_dir = (
         Path(app_settings.FRONTEND_DIST_DIR).resolve()

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Moon, Sun, HardDrive, Sparkles } from "lucide-react";
+import { Moon, Sun, HardDrive, Sparkles, LogIn, LogOut, User as UserIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMotionPreset } from "@/lib/motion";
+import { useAuth } from "@/hooks/useAuth";
 
 export type Theme = "dark" | "light";
 
@@ -18,6 +19,8 @@ export function AppShell({ children }: AppShellProps) {
     }
     return "dark";
   });
+
+  const { user, isLoading, login, logout } = useAuth();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -55,8 +58,8 @@ export function AppShell({ children }: AppShellProps) {
             </div>
           </div>
 
-          {/* Right Controls: Storage Ring Indicator & Theme Toggle */}
-          <div className="flex items-center gap-4">
+          {/* Right Controls: Storage Indicator, Auth Status & Theme Toggle */}
+          <div className="flex items-center gap-3 sm:gap-4">
             {/* Storage Ring Stub */}
             <div
               className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-border hover:bg-surface-hover transition-colors"
@@ -89,6 +92,43 @@ export function AppShell({ children }: AppShellProps) {
               </span>
             </div>
 
+            {/* User Auth Section */}
+            {isLoading ? (
+              <div className="w-24 h-8 rounded-md bg-surface animate-pulse" />
+            ) : user ? (
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-border"
+                  data-testid="user-profile"
+                >
+                  <UserIcon className="w-3.5 h-3.5 text-accent-1" />
+                  <span className="text-xs font-medium text-text max-w-[140px] sm:max-w-[180px] truncate">
+                    {user.email}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={logout}
+                  aria-label="Log out"
+                  data-testid="logout-button"
+                  className="p-2 rounded-md bg-surface border border-border hover:bg-surface-hover hover:text-danger text-text-muted transition-colors"
+                  title="Log out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={login}
+                data-testid="login-button"
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-surface border border-border hover:bg-surface-hover hover:shadow-glow text-xs font-medium text-text transition-all duration-150"
+              >
+                <LogIn className="w-3.5 h-3.5 text-accent-1" />
+                <span>Sign in with Google</span>
+              </button>
+            )}
+
             {/* Dark/Light Theme Toggle */}
             <button
               type="button"
@@ -117,7 +157,7 @@ export function AppShell({ children }: AppShellProps) {
               </div>
               <h2 className="text-xl font-semibold mb-2">Welcome to DriveSeed</h2>
               <p className="text-sm text-text-muted max-w-md">
-                Fast server downloads streamed straight to your Google Drive. The pipeline is ready for core integrations.
+                Fast server downloads streamed straight to your Google Drive.
               </p>
             </div>
           )}
