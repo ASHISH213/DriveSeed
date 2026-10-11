@@ -51,6 +51,15 @@ const config: Config = {
         "space-8": "var(--space-8)",
         "space-12": "var(--space-12)",
       },
+      keyframes: {
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+      },
+      animation: {
+        shimmer: "shimmer 2s infinite ease-in-out",
+      },
     },
   },
   plugins: [],
