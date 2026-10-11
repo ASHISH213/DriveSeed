@@ -23,7 +23,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* fakes pass a small contract test for each interface.
 - [x] **M0.6 Frontend skeleton.** Vite + React + TypeScript + Tailwind + shadcn/ui; tokens from `DESIGN.md` applied; dark/light toggle; FastAPI serves the built bundle.
   *Done when:* the built app loads at `localhost:8000` showing the styled empty `AppShell` in both themes.
-- [ ] **M0.7 CI.** GitHub Actions running backend lint, types, tests and frontend lint, typecheck, tests.
+- [x] **M0.7 CI.** GitHub Actions running backend lint, types, tests and frontend lint, typecheck, tests.
   *Done when:* a pull request shows all checks green.
 
 ## M1: Core pipeline (about 3 weeks)
