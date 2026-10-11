@@ -32,6 +32,14 @@ class FakeStorageBackend:
         """Create a subfolder and return its ID."""
         folder_id = f"folder_{uuid.uuid4().hex[:8]}"
         self.folders[folder_id] = name
+        self.files[folder_id] = StoredFile(
+            id=folder_id,
+            name=name,
+            parent_id=parent_id,
+            mime_type="application/vnd.google-apps.folder",
+            size_bytes=0,
+            md5=None,
+        )
         return folder_id
 
     async def upload_file(

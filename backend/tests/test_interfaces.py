@@ -94,7 +94,7 @@ async def test_storage_backend_contract(test_user: User, tmp_path: Path) -> None
     # 9. delete
     await storage.delete(test_user, stored.id)
     root_items = await storage.list_folder(test_user, root_id)
-    assert len(root_items) == 0
+    assert stored.id not in [item.id for item in root_items]
 
 
 @pytest.mark.asyncio

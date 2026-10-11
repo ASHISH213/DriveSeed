@@ -45,7 +45,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* you can paste a magnet or URL in the browser, watch progress, and see it complete.
 
 ## M2: Library and streaming (about 2–3 weeks)
-- [ ] **M2.1 Library API and UI.** List/rename/move/delete, folder navigation, breadcrumbs, list and grid views, search by name.
+- [x] **M2.1 Library API and UI.** List/rename/move/delete, folder navigation, breadcrumbs, list and grid views, search by name.
 - [ ] **M2.2 Range streaming proxy.** `GET /stream/{file_id}` with correct `206`, `Content-Range`, `Accept-Ranges`; token refresh mid-stream.
   *Done when:* an MP4 in Drive plays in the browser and seeking works.
 - [ ] **M2.3 Player v1.** Vidstack/Video.js shell, resume position saved in `playback`, keyboard shortcuts.
