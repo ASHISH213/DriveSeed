@@ -2,9 +2,12 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import Settings, get_settings
 from app.core.db import check_db_connection, close_db_connection
@@ -58,6 +61,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database="connected" if db_ok else "disconnected",
             redis="connected" if redis_ok else "disconnected",
         )
+
+    dist_dir = (
+        Path(app_settings.FRONTEND_DIST_DIR).resolve()
+        if app_settings.FRONTEND_DIST_DIR
+        else (Path(__file__).resolve().parent.parent.parent / "frontend" / "dist")
+    )
+
+    if dist_dir.is_dir() and (dist_dir / "index.html").is_file():
+        assets_dir = dist_dir / "assets"
+        if assets_dir.is_dir():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str) -> FileResponse:
+            if full_path.startswith("api/") or full_path == "api":
+                raise HTTPException(status_code=404, detail="Not Found")
+            file_path = dist_dir / full_path
+            if full_path and file_path.is_file():
+                return FileResponse(file_path)
+            return FileResponse(dist_dir / "index.html")
 
     return app
 

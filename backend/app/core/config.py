@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Storage & Temp directory
     TEMP_DOWNLOAD_DIR: str = "./temp"
 
+    # Frontend static bundle directory
+    FRONTEND_DIST_DIR: str = ""
+
     # Security & Encryption (Fernet key for Google Drive refresh tokens)
     FERNET_KEY: str = ""
 
