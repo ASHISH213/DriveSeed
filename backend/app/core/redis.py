@@ -13,7 +13,7 @@ def get_redis_client() -> Redis:
     global _redis_client
     if _redis_client is None:
         settings = get_settings()
-        _redis_client = aioredis.from_url(
+        _redis_client = aioredis.from_url(  # type: ignore[no-untyped-call]
             settings.REDIS_URL,
             decode_responses=True,
         )

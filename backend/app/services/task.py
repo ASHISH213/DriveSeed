@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.interfaces.queue import TaskQueue
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import TaskCreateRequest
@@ -28,6 +29,9 @@ class TaskNotFoundError(Exception):
 
 class TaskService:
     """Service encapsulating task queries, mutations, and transitions."""
+
+    def __init__(self, queue: TaskQueue | None = None) -> None:
+        self.queue = queue
 
     @staticmethod
     def _parse_source(
@@ -94,6 +98,10 @@ class TaskService:
         db.add(task)
         await db.commit()
         await db.refresh(task)
+
+        if self.queue:
+            await self.queue.enqueue("process_download_task", task_id=str(task.id))
+
         return task
 
     async def list_tasks(

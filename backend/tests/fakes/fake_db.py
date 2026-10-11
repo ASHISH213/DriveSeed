@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.models.task import Task
+from app.models.task_file import TaskFile
 from app.models.user import User
 
 
@@ -53,6 +54,15 @@ class FakeAsyncSession:
             if not hasattr(instance, "files") or instance.__dict__.get("files") is None:
                 instance.files = []
             self.tasks[instance.id] = instance
+        elif isinstance(instance, TaskFile):
+            if instance.id is None:
+                instance.id = uuid.uuid4()
+            task = self.tasks.get(instance.task_id)
+            if task is not None:
+                if not hasattr(task, "files") or task.__dict__.get("files") is None:
+                    task.files = []
+                if instance not in task.files:
+                    task.files.append(instance)
 
     async def commit(self) -> None:
         pass
