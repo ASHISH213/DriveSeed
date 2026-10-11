@@ -33,7 +33,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* a script uploads a 200 MB test file into your Drive and verification passes; unit tests use a fake Drive client.
 - [x] **M1.3 Task model and API.** Tables for `tasks` and `task_files`; routes to create, list, pause, resume, cancel; state machine from `ARCHITECTURE.md` section 4 with tests for allowed and forbidden transitions.
   *Done when:* tests prove transitions; API returns tasks in JSON.
-- [ ] **M1.4 HTTP download engine.** `HttpEngine` with `httpx`, Range resume, SSRF guard (block private/loopback/link-local, check redirects), progress reporting.
+- [x] **M1.4 HTTP download engine.** `HttpEngine` with `httpx`, Range resume, SSRF guard (block private/loopback/link-local, check redirects), progress reporting.
   *Done when:* a URL download completes, resumes after being killed midway, and a request to `http://127.0.0.1` is rejected (tests for both).
 - [ ] **M1.5 Worker and pipeline.** `arq` worker runs: download → upload to Drive → verify → delete temp files → `completed`.
   *Done when:* adding a direct URL via the API ends with the file in your Drive and the temp folder empty.
