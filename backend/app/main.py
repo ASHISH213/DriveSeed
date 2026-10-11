@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.auth import router as auth_router
 from app.api.events import router as events_router
 from app.api.files import router as files_router
+from app.api.stream import router as stream_router
 from app.api.tasks import router as tasks_router
 from app.core.config import Settings, get_settings
 from app.core.db import check_db_connection, close_db_connection
@@ -71,6 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(tasks_router)
     app.include_router(events_router)
     app.include_router(files_router)
+    app.include_router(stream_router)
 
     dist_dir = (
         Path(app_settings.FRONTEND_DIST_DIR).resolve()
@@ -85,7 +87,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         @app.get("/{full_path:path}", include_in_schema=False)
         async def serve_spa(full_path: str) -> FileResponse:
-            if full_path.startswith("api/") or full_path == "api":
+            if (
+                full_path.startswith("api/")
+                or full_path == "api"
+                or full_path.startswith("stream/")
+                or full_path == "stream"
+            ):
                 raise HTTPException(status_code=404, detail="Not Found")
             file_path = dist_dir / full_path
             if full_path and file_path.is_file():

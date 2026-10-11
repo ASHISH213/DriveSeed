@@ -46,7 +46,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 
 ## M2: Library and streaming (about 2–3 weeks)
 - [x] **M2.1 Library API and UI.** List/rename/move/delete, folder navigation, breadcrumbs, list and grid views, search by name.
-- [ ] **M2.2 Range streaming proxy.** `GET /stream/{file_id}` with correct `206`, `Content-Range`, `Accept-Ranges`; token refresh mid-stream.
+- [x] **M2.2 Range streaming proxy.** `GET /stream/{file_id}` with correct `206`, `Content-Range`, `Accept-Ranges`; token refresh mid-stream.
   *Done when:* an MP4 in Drive plays in the browser and seeking works.
 - [ ] **M2.3 Player v1.** Vidstack/Video.js shell, resume position saved in `playback`, keyboard shortcuts.
 - [ ] **M2.4 Storage meter.** `GET /api/storage` and the `StorageRing` component.

@@ -75,6 +75,12 @@ class FakeStorageBackend:
         """List files directly inside the given folder."""
         return [f for f in self.files.values() if f.parent_id == folder_id]
 
+    async def get_file(self, user: User, file_id: str) -> StoredFile:
+        """Fetch metadata for an individual stored file or folder."""
+        if file_id not in self.files:
+            raise FileNotFoundError(f"File {file_id} not found")
+        return self.files[file_id]
+
     async def open_range(
         self,
         user: User,

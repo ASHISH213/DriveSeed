@@ -230,6 +230,31 @@ class DriveApiStorage:
 
         return await asyncio.to_thread(_sync_list)
 
+    async def get_file(self, user: User, file_id: str) -> StoredFile:
+        """Fetch metadata for a single file or folder from Google Drive."""
+        service = self._get_service(user)
+
+        def _sync_get() -> StoredFile:
+            res = (
+                service.files()
+                .get(
+                    fileId=file_id,
+                    fields="id, name, mimeType, size, md5Checksum, parents",
+                )
+                .execute()
+            )
+            parents = res.get("parents", [""])
+            return StoredFile(
+                id=res["id"],
+                name=res["name"],
+                parent_id=parents[0] if parents else "",
+                mime_type=res.get("mimeType", "application/octet-stream"),
+                size_bytes=int(res.get("size", 0)),
+                md5=res.get("md5Checksum"),
+            )
+
+        return await asyncio.to_thread(_sync_get)
+
     async def open_range(
         self,
         user: User,
@@ -237,7 +262,7 @@ class DriveApiStorage:
         start: int,
         end: int | None,
     ) -> AsyncIterator[bytes]:
-        """Stream a byte range from Google Drive."""
+        """Stream a byte range from Google Drive with token refresh support."""
         service = self._get_service(user)
 
         def _sync_fetch_range() -> bytes:
@@ -246,7 +271,16 @@ class DriveApiStorage:
             request.headers["Range"] = range_header
             return request.execute()  # type: ignore[no-any-return]
 
-        data = await asyncio.to_thread(_sync_fetch_range)
+        try:
+            data = await asyncio.to_thread(_sync_fetch_range)
+        except Exception as err:
+            err_msg = str(err).lower()
+            if "401" in err_msg or "invalid_grant" in err_msg or "token" in err_msg:
+                service = self._get_service(user)
+                data = await asyncio.to_thread(_sync_fetch_range)
+            else:
+                raise
+
         yield data
 
     async def rename(self, user: User, file_id: str, new_name: str) -> StoredFile:

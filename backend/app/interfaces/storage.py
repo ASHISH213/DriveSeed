@@ -34,6 +34,10 @@ class StorageBackend(Protocol):
         """List files and folders directly inside parent folder."""
         ...
 
+    async def get_file(self, user: User, file_id: str) -> StoredFile:
+        """Fetch metadata for an individual stored file or folder."""
+        ...
+
     async def open_range(
         self,
         user: User,
