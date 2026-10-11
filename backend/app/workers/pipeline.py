@@ -1,5 +1,4 @@
-"""Worker pipeline orchestrating download, Google Drive upload, verification, and cleanup."""
-
+import asyncio
 import logging
 import shutil
 import time
@@ -17,6 +16,7 @@ from app.models.task import Task
 from app.models.task_file import TaskFile
 from app.models.user import User
 from app.services.drive import DriveApiStorage
+from app.services.events import TaskEvent, get_event_broadcaster
 from app.services.http_download import HttpEngine
 from app.services.task_state import TaskState, TaskStateMachine
 from app.services.torrent import TorrentEngine
@@ -34,6 +34,7 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
 
     session_factory = ctx.get("db_session_factory") or get_session_factory()
     settings = ctx.get("settings") or get_settings()
+    broadcaster = ctx.get("event_broadcaster") or get_event_broadcaster()
     temp_base = Path(settings.TEMP_DOWNLOAD_DIR)
     task_dest = temp_base / str(task_uuid)
 
@@ -46,6 +47,31 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
         if not task:
             logger.error("Task %s not found in database", task_id)
             return
+
+        async def _emit_event(
+            state: str,
+            progress: float = 0.0,
+            speed_bps: float = 0.0,
+            downloaded_bytes: int = 0,
+            total_bytes: int = 0,
+            error: str | None = None,
+        ) -> None:
+            try:
+                await broadcaster.publish(
+                    TaskEvent(
+                        task_id=str(task.id),
+                        user_id=str(task.user_id),
+                        name=task.name,
+                        state=state,
+                        progress=progress,
+                        speed_bps=speed_bps,
+                        downloaded_bytes=downloaded_bytes,
+                        total_bytes=total_bytes,
+                        error=error,
+                    )
+                )
+            except Exception:
+                pass
 
         if task.state in (
             TaskState.COMPLETED.value,
@@ -60,12 +86,14 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
             task.state = TaskState.FAILED.value
             task.error = "User not found"
             await db.commit()
+            await _emit_event(state=TaskState.FAILED.value, error=task.error)
             return
 
         if not user.drive_refresh_token_enc:
             task.state = TaskState.FAILED.value
             task.error = "Google Drive account is not connected"
             await db.commit()
+            await _emit_event(state=TaskState.FAILED.value, error=task.error)
             return
 
         # Ensure task is in downloading state
@@ -73,6 +101,10 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
             TaskStateMachine.transition(task, TaskState.DOWNLOADING)
             await db.commit()
             await db.refresh(task)
+            await _emit_event(
+                state=TaskState.DOWNLOADING.value,
+                progress=task.progress or 0.0,
+            )
 
         # Ensure temp destination directory exists
         task_dest.mkdir(parents=True, exist_ok=True)
@@ -107,9 +139,16 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
 
                 await db.commit()
                 await db.refresh(task)
+                await _emit_event(
+                    state=TaskState.DOWNLOADING.value,
+                    progress=task.progress or 0.0,
+                    downloaded_bytes=0,
+                    total_bytes=task.size_bytes or 0,
+                )
 
             # 2. Download files to local temp directory
             last_commit = time.monotonic()
+            last_event = time.monotonic()
             download_completed = False
 
             async for progress in engine.start(task=task, selected=[0], dest=task_dest):
@@ -122,11 +161,29 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
                 elif progress.state == "cancelled":
                     TaskStateMachine.transition(task, TaskState.CANCELLED)
                     await db.commit()
+                    await _emit_event(
+                        state=TaskState.CANCELLED.value,
+                        progress=task.progress or 0.0,
+                        speed_bps=0.0,
+                        downloaded_bytes=progress.downloaded_bytes,
+                        total_bytes=progress.total_bytes,
+                    )
                     shutil.rmtree(task_dest, ignore_errors=True)
                     return
 
-                # Throttle progress commits to once every second or on complete
                 now = time.monotonic()
+                # Throttle event broadcasts to ~0.5s or on completion
+                if now - last_event >= 0.5 or download_completed:
+                    await _emit_event(
+                        state=TaskState.DOWNLOADING.value,
+                        progress=task.progress or 0.0,
+                        speed_bps=progress.speed_bps,
+                        downloaded_bytes=progress.downloaded_bytes,
+                        total_bytes=progress.total_bytes,
+                    )
+                    last_event = now
+
+                # Throttle progress commits to once every second or on complete
                 if now - last_commit >= 1.0 or download_completed:
                     await db.commit()
                     last_commit = now
@@ -145,6 +202,13 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
             TaskStateMachine.transition(task, TaskState.UPLOADING)
             await db.commit()
             await db.refresh(task)
+            await _emit_event(
+                state=TaskState.UPLOADING.value,
+                progress=task.progress or 0.0,
+                speed_bps=0.0,
+                downloaded_bytes=task.size_bytes or 0,
+                total_bytes=task.size_bytes or 0,
+            )
 
             storage = ctx.get("storage_backend") or DriveApiStorage(settings=settings)
 
@@ -154,8 +218,23 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
                 user.drive_root_folder_id = root_folder_id
                 await db.commit()
 
+            loop = asyncio.get_running_loop()
+            last_upload_event = [time.monotonic()]
+
             def _on_upload_progress(uploaded: int, total: int) -> None:
-                pass
+                now = time.monotonic()
+                if now - last_upload_event[0] >= 0.5 or (total > 0 and uploaded >= total):
+                    last_upload_event[0] = now
+                    prog = min(1.0, uploaded / total) if total > 0 else 0.0
+                    asyncio.run_coroutine_threadsafe(
+                        _emit_event(
+                            state=TaskState.UPLOADING.value,
+                            progress=prog,
+                            downloaded_bytes=uploaded,
+                            total_bytes=total,
+                        ),
+                        loop,
+                    )
 
             stored_file = await storage.upload_file(
                 user=user,
@@ -178,11 +257,22 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
             task.completed_at = datetime.now(UTC)
             task.error = None
             await db.commit()
+            await _emit_event(
+                state=TaskState.COMPLETED.value,
+                progress=1.0,
+                downloaded_bytes=task.size_bytes or 0,
+                total_bytes=task.size_bytes or 0,
+            )
 
         except Exception as err:
             logger.exception("Pipeline failed for task %s: %s", task_id, err)
             task.state = TaskState.FAILED.value
             task.error = str(err)
             await db.commit()
+            await _emit_event(
+                state=TaskState.FAILED.value,
+                progress=task.progress or 0.0,
+                error=str(err),
+            )
             # Ensure local temp directory is always deleted on failure
             shutil.rmtree(task_dest, ignore_errors=True)

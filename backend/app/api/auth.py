@@ -30,8 +30,15 @@ async def get_current_user(
 ) -> User:
     """Dependency that resolves the authenticated User or raises 401."""
     settings = get_settings()
-    session_cookie = request.cookies.get(settings.SESSION_COOKIE_NAME)
-    user = await auth_service.get_current_user(db, session_cookie)
+    session_token = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    if not session_token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header[7:].strip()
+    if not session_token:
+        session_token = request.query_params.get("token")
+
+    user = await auth_service.get_current_user(db, session_token)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -52,8 +59,15 @@ async def get_optional_user(
 ) -> User | None:
     """Dependency that resolves the authenticated User if logged in, else None."""
     settings = get_settings()
-    session_cookie = request.cookies.get(settings.SESSION_COOKIE_NAME)
-    return await auth_service.get_current_user(db, session_cookie)
+    session_token = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    if not session_token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header[7:].strip()
+    if not session_token:
+        session_token = request.query_params.get("token")
+
+    return await auth_service.get_current_user(db, session_token)
 
 
 @router.get("/login", response_model=AuthUrlResponse)

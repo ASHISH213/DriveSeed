@@ -39,7 +39,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* adding a direct URL via the API ends with the file in your Drive and the temp folder empty.
 - [x] **M1.6 Torrent engine.** `TorrentEngine` with `libtorrent`: fetch metadata (file list), selected-file download, pause/resume, progress. Disabled when `PROFILE=colab`.
   *Done when:* a legal test torrent (for example a Linux distribution ISO's official torrent) downloads and lands in Drive; a test proves the engine refuses to start under `PROFILE=colab`.
-- [ ] **M1.7 Live progress (SSE).** `GET /events` streams task updates (Redis pub/sub).
+- [x] **M1.7 Live progress (SSE).** `GET /events` streams task updates (Redis pub/sub).
   *Done when:* `curl -N localhost:8000/events` shows live progress while a task runs.
 - [ ] **M1.8 Minimal dashboard.** AddBox, TaskCard with progress and controls, live updates over SSE.
   *Done when:* you can paste a magnet or URL in the browser, watch progress, and see it complete.

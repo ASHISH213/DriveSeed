@@ -13,6 +13,7 @@ from app.interfaces.queue import TaskQueue
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import TaskCreateRequest
+from app.services.events import EventBroadcaster, TaskEvent, get_event_broadcaster
 from app.services.task_state import (
     TaskState,
     TaskStateMachine,
@@ -30,8 +31,36 @@ class TaskNotFoundError(Exception):
 class TaskService:
     """Service encapsulating task queries, mutations, and transitions."""
 
-    def __init__(self, queue: TaskQueue | None = None) -> None:
+    def __init__(
+        self,
+        queue: TaskQueue | None = None,
+        broadcaster: EventBroadcaster | None = None,
+    ) -> None:
         self.queue = queue
+        self._broadcaster = broadcaster
+
+    @property
+    def broadcaster(self) -> EventBroadcaster:
+        """Get or lazily initialize the EventBroadcaster."""
+        if self._broadcaster is None:
+            self._broadcaster = get_event_broadcaster()
+        return self._broadcaster
+
+    async def _emit_event(self, task: Task) -> None:
+        """Publish real-time task state update."""
+        try:
+            await self.broadcaster.publish(
+                TaskEvent(
+                    task_id=str(task.id),
+                    user_id=str(task.user_id),
+                    name=task.name,
+                    state=task.state,
+                    progress=task.progress or 0.0,
+                    error=task.error,
+                )
+            )
+        except Exception:
+            pass
 
     @staticmethod
     def _parse_source(
@@ -102,6 +131,7 @@ class TaskService:
         if self.queue:
             await self.queue.enqueue("process_download_task", task_id=str(task.id))
 
+        await self._emit_event(task)
         return task
 
     async def list_tasks(
@@ -148,6 +178,7 @@ class TaskService:
         TaskStateMachine.transition(task, TaskState.PAUSED)
         await db.commit()
         await db.refresh(task)
+        await self._emit_event(task)
         return task
 
     async def resume_task(
@@ -161,6 +192,7 @@ class TaskService:
         TaskStateMachine.transition(task, TaskState.DOWNLOADING)
         await db.commit()
         await db.refresh(task)
+        await self._emit_event(task)
         return task
 
     async def cancel_task(
@@ -174,4 +206,5 @@ class TaskService:
         TaskStateMachine.transition(task, TaskState.CANCELLED)
         await db.commit()
         await db.refresh(task)
+        await self._emit_event(task)
         return task
