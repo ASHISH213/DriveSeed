@@ -1,8 +1,10 @@
 """In-memory fake AsyncSession for testing database interactions without Postgres."""
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
+from app.models.task import Task
 from app.models.user import User
 
 
@@ -34,6 +36,7 @@ class FakeAsyncSession:
 
     def __init__(self) -> None:
         self.users: dict[uuid.UUID, User] = {}
+        self.tasks: dict[uuid.UUID, Task] = {}
         self.added: list[Any] = []
 
     def add(self, instance: Any) -> None:
@@ -42,6 +45,14 @@ class FakeAsyncSession:
             if instance.id is None:
                 instance.id = uuid.uuid4()
             self.users[instance.id] = instance
+        elif isinstance(instance, Task):
+            if instance.id is None:
+                instance.id = uuid.uuid4()
+            if getattr(instance, "created_at", None) is None:
+                instance.created_at = datetime.now(UTC)
+            if not hasattr(instance, "files") or instance.__dict__.get("files") is None:
+                instance.files = []
+            self.tasks[instance.id] = instance
 
     async def commit(self) -> None:
         pass
@@ -52,15 +63,56 @@ class FakeAsyncSession:
     async def execute(self, statement: Any) -> FakeExecuteResult:
         matching: list[Any] = []
         try:
+            entity = None
+            if hasattr(statement, "column_descriptions") and statement.column_descriptions:
+                entity = statement.column_descriptions[0].get("entity")
+
             params = statement.compile().params
-            for u in self.users.values():
-                id_match = any(v == u.id for v in params.values() if isinstance(v, uuid.UUID))
-                sub_match = any(v == u.google_sub for v in params.values() if isinstance(v, str))
-                email_match = any(v == u.email for v in params.values() if isinstance(v, str))
-                if id_match or sub_match or email_match:
-                    matching.append(u)
+
+            if entity is User:
+                for u in self.users.values():
+                    id_match = any(v == u.id for v in params.values() if isinstance(v, uuid.UUID))
+                    sub_match = any(
+                        v == u.google_sub for v in params.values() if isinstance(v, str)
+                    )
+                    email_match = any(v == u.email for v in params.values() if isinstance(v, str))
+                    if id_match or sub_match or email_match:
+                        matching.append(u)
+            elif entity is Task:
+                # Find task id and user id from params
+                param_ids = [v for k, v in params.items() if "id" in k and isinstance(v, uuid.UUID)]
+                param_user_ids = [
+                    v for k, v in params.items() if "user_id" in k and isinstance(v, uuid.UUID)
+                ]
+
+                task_list = list(self.tasks.values())
+                for t in task_list:
+                    # If user_id is in params, must match
+                    if param_user_ids and t.user_id not in param_user_ids:
+                        continue
+                    # If specific task id is in params, must match
+                    if param_ids:
+                        task_id_matches = [pid for pid in param_ids if pid not in param_user_ids]
+                        if task_id_matches and t.id not in task_id_matches:
+                            continue
+                    # Ensure files attribute is initialized
+                    if not hasattr(t, "files") or t.__dict__.get("files") is None:
+                        t.files = []
+                    matching.append(t)
+                matching.sort(
+                    key=lambda x: x.created_at or datetime.min.replace(tzinfo=UTC), reverse=True
+                )
+            else:
+                # Fallback matching for backward compatibility
+                for u in self.users.values():
+                    id_match = any(v == u.id for v in params.values() if isinstance(v, uuid.UUID))
+                    sub_match = any(
+                        v == u.google_sub for v in params.values() if isinstance(v, str)
+                    )
+                    email_match = any(v == u.email for v in params.values() if isinstance(v, str))
+                    if id_match or sub_match or email_match:
+                        matching.append(u)
         except Exception:
-            # Fallback if no params or non-compilable
             pass
 
         return FakeExecuteResult(matching)
@@ -68,4 +120,6 @@ class FakeAsyncSession:
     async def get(self, entity_class: type, ident: Any) -> Any | None:
         if entity_class is User and isinstance(ident, uuid.UUID):
             return self.users.get(ident)
+        if entity_class is Task and isinstance(ident, uuid.UUID):
+            return self.tasks.get(ident)
         return None

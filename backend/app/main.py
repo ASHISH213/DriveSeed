@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.auth import router as auth_router
+from app.api.tasks import router as tasks_router
 from app.core.config import Settings, get_settings
 from app.core.db import check_db_connection, close_db_connection
 from app.core.redis import check_redis_connection, close_redis_connection
@@ -65,6 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Register API routers
     app.include_router(auth_router)
+    app.include_router(tasks_router)
 
     dist_dir = (
         Path(app_settings.FRONTEND_DIST_DIR).resolve()

@@ -31,7 +31,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* you can sign in with Google, see your email in the UI, and the token in the database is encrypted.
 - [x] **M1.2 Drive storage backend.** `DriveApiStorage`: create root folder "DriveSeed", create folder, resumable upload with progress, MD5/size verification, list, delete, quota.
   *Done when:* a script uploads a 200 MB test file into your Drive and verification passes; unit tests use a fake Drive client.
-- [ ] **M1.3 Task model and API.** Tables for `tasks` and `task_files`; routes to create, list, pause, resume, cancel; state machine from `ARCHITECTURE.md` section 4 with tests for allowed and forbidden transitions.
+- [x] **M1.3 Task model and API.** Tables for `tasks` and `task_files`; routes to create, list, pause, resume, cancel; state machine from `ARCHITECTURE.md` section 4 with tests for allowed and forbidden transitions.
   *Done when:* tests prove transitions; API returns tasks in JSON.
 - [ ] **M1.4 HTTP download engine.** `HttpEngine` with `httpx`, Range resume, SSRF guard (block private/loopback/link-local, check redirects), progress reporting.
   *Done when:* a URL download completes, resumes after being killed midway, and a request to `http://127.0.0.1` is rejected (tests for both).

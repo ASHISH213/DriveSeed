@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
 if TYPE_CHECKING:
+    from app.models.task_file import TaskFile
     from app.models.user import User
 
 
@@ -78,4 +79,9 @@ class Task(Base):
     user: Mapped["User"] = relationship(
         "User",
         back_populates="tasks",
+    )
+    files: Mapped[list["TaskFile"]] = relationship(
+        "TaskFile",
+        back_populates="task",
+        cascade="all, delete-orphan",
     )
