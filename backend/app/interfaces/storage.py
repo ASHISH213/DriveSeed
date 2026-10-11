@@ -2,12 +2,13 @@
 
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from app.interfaces.types import StorageQuota, StoredFile
 from app.models.user import User
 
 
+@runtime_checkable
 class StorageBackend(Protocol):
     """Protocol for cloud/local storage operations."""
 
