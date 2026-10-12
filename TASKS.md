@@ -81,7 +81,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* sending a magnet link to the Telegram bot starts a task and notifies on completion.
 
 ## M6: Colab Edition (about 2 weeks)
-- **M6 Colab Edition:** `colab` profile implementations (`MountedDriveStorage`, `InProcessQueue`, SQLite, single-user auth, `DriveHandoffStreamer`), notebook, `/api/capabilities`, acceptance criteria from PRD section 18.6.
+- [x] **M6 Colab Edition:** `colab` profile implementations (`MountedDriveStorage`, `InProcessQueue`, SQLite, single-user auth, `DriveHandoffStreamer`), notebook, `/api/capabilities`, acceptance criteria from PRD section 18.6.
 
 ## Notes for you (not the agent)
 - Commit after every ticked box. If the agent goes off track, revert to the last commit instead of trying to patch a mess.
@@ -104,6 +104,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - 2026-10-12: implemented webhooks on task lifecycle (M5.2) with WebhookEndpoint model, migration `20261012_05`, HMAC-SHA256 signature headers (`X-DriveSeed-Signature: sha256=...`), automatic dispatch in pipeline worker on task.completed and task.failed with retry logic on transient errors, POST/GET/DELETE `/api/webhooks` and POST `/api/webhooks/{id}/test` ping endpoints, SSRF protection, useWebhooks hook, and WebhooksCard UI in Settings page
 - 2026-10-12: implemented RSS auto-downloader (M5.3) with RssSubscription and RssFeedItem models, migration `20261012_06`, RSS 2.0 (enclosures & magnets) and Atom XML parser, SSRF validation, Python `re` regex filtering, robust deduplication against seen GUIDs and active task source URIs, auto task creation via `TaskService.create_task`, REST API (`POST /api/rss`, `GET /api/rss`, `POST /api/rss/preview`, `POST /api/rss/{id}/sync`, `DELETE /api/rss/{id}`), `useRss` hook, and `RssFeedsCard` UI with live feed preview and manual sync trigger in Settings page
 - 2026-10-13: implemented Telegram bot integration (M5.4) with telegram_chat_id and expiring link tokens in User model, migration `20261013_07`, TelegramBotService handling /start account linking, /add with SSRF validation, /status with active download progress, /library with Google Drive files, /unlink, and automatic push notifications on task completion and failure, REST API (`POST /api/telegram/webhook`, `GET /api/telegram/status`, `POST /api/telegram/link-code`, `DELETE /api/telegram/link`), `useTelegram` hook, and `TelegramCard` UI with interactive connection flow in Settings page
+- 2026-10-13: implemented Colab Edition (M6) with MountedDriveStorage (chunked sequential writes, atomic rename via .driveseed_tmp, MD5 verification, path traversal defense, disk usage quota), InProcessQueue (asyncio background task executor without Redis), DriveHandoffStreamer (strictly delegating streaming playback to Google Drive native viewer), single-user auto-auth (colab@localhost), SQLite support with aiosqlite, GET /api/capabilities endpoint, driveseed_colab.ipynb notebook with Drive mount and UI iframe display, pinned requirements-colab.txt, frontend useCapabilities hook, AddBox Colab torrent restrictions, and comprehensive test suite proving torrents and media proxying are disabled under PROFILE=colab
 
 
 

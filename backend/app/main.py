@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.auth import router as auth_router
+from app.api.capabilities import router as capabilities_router
 from app.api.events import router as events_router
 from app.api.files import router as files_router
 from app.api.playback import router as playback_router
@@ -77,6 +78,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     # Register API routers
+    app.include_router(capabilities_router)
     app.include_router(auth_router)
     app.include_router(tasks_router)
     app.include_router(events_router)

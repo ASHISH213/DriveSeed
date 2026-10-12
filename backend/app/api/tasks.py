@@ -29,7 +29,9 @@ router = APIRouter(prefix="/api/tasks", tags=["Tasks"])
 
 def get_task_service() -> TaskService:
     """Dependency provider for TaskService."""
-    return TaskService()
+    from app.services.factory import get_task_queue
+
+    return TaskService(queue=get_task_queue())
 
 
 @router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)

@@ -6,7 +6,6 @@ from app.core.config import get_settings
 from app.interfaces.storage import StorageBackend
 from app.models.user import User
 from app.schemas.storage import StorageResponse
-from app.services.drive import DriveApiStorage
 from app.services.library import DriveNotConnectedError
 
 logger = logging.getLogger(__name__)
@@ -21,10 +20,14 @@ class StorageService:
     def _get_storage(self) -> StorageBackend:
         if self._storage is not None:
             return self._storage
-        return DriveApiStorage(settings=get_settings())
+        from app.services.factory import get_storage_backend
+
+        return get_storage_backend(get_settings())
 
     @staticmethod
     def _verify_drive_connected(user: User) -> None:
+        if get_settings().PROFILE == "colab":
+            return
         if not user.drive_refresh_token_enc:
             raise DriveNotConnectedError()
 

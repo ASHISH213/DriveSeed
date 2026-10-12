@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     # Storage & Temp directory
     TEMP_DOWNLOAD_DIR: str = "./temp"
+    COLAB_DRIVE_ROOT: str = "/content/drive/MyDrive/DriveSeed"
 
     # Frontend static bundle directory
     FRONTEND_DIST_DIR: str = ""

@@ -15,7 +15,6 @@ from app.core.db import get_session_factory
 from app.models.task import Task
 from app.models.task_file import TaskFile
 from app.models.user import User
-from app.services.drive import DriveApiStorage
 from app.services.events import TaskEvent, get_event_broadcaster
 from app.services.http_download import HttpEngine
 from app.services.task_state import TaskState, TaskStateMachine
@@ -89,7 +88,7 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
             await _emit_event(state=TaskState.FAILED.value, error=task.error)
             return
 
-        if not user.drive_refresh_token_enc:
+        if settings.PROFILE != "colab" and not user.drive_refresh_token_enc:
             task.state = TaskState.FAILED.value
             task.error = "Google Drive account is not connected"
             await db.commit()
@@ -210,7 +209,9 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
                 total_bytes=task.size_bytes or 0,
             )
 
-            storage = ctx.get("storage_backend") or DriveApiStorage(settings=settings)
+            from app.services.factory import get_storage_backend
+
+            storage = ctx.get("storage_backend") or get_storage_backend(settings=settings)
 
             # Ensure root folder in user's Drive
             root_folder_id = await storage.ensure_root(user)

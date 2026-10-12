@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Magnet, Link as LinkIcon, Plus, Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { Magnet, Link as LinkIcon, Plus, Loader2, Sparkles, AlertCircle, Ban } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMotionPreset } from "@/lib/motion";
+import { useCapabilities } from "@/hooks/useCapabilities";
 
 interface AddBoxProps {
   onAdd: (sourceUri: string, name?: string) => Promise<unknown>;
@@ -15,10 +16,13 @@ export const AddBox: React.FC<AddBoxProps> = ({ onAdd, disabled = false }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { capabilities } = useCapabilities();
+  const torrentsEnabled = capabilities?.features?.torrent ?? true;
+
   const trimmed = uri.trim();
   const isMagnet = trimmed.startsWith("magnet:");
   const isHttp = trimmed.startsWith("http://") || trimmed.startsWith("https://");
-  const isValid = isMagnet || isHttp;
+  const isValid = (isMagnet && torrentsEnabled) || isHttp;
 
   const { slideFade } = useMotionPreset();
 
@@ -26,8 +30,17 @@ export const AddBox: React.FC<AddBoxProps> = ({ onAdd, disabled = false }) => {
     if (e) e.preventDefault();
     if (!trimmed || isSubmitting || disabled) return;
 
+    if (isMagnet && !torrentsEnabled) {
+      setError("Torrent downloading is disabled in Google Colab mode.");
+      return;
+    }
+
     if (!isValid) {
-      setError("Please enter a valid magnet link or HTTP/HTTPS download URL");
+      setError(
+        torrentsEnabled
+          ? "Please enter a valid magnet link or HTTP/HTTPS download URL"
+          : "Please enter a valid HTTP/HTTPS download URL (torrents disabled)"
+      );
       return;
     }
 
@@ -55,7 +68,9 @@ export const AddBox: React.FC<AddBoxProps> = ({ onAdd, disabled = false }) => {
         <div className="flex items-center gap-3 px-3 py-1.5">
           {/* Source Type Icon Indicator */}
           <div className="w-8 h-8 rounded-lg bg-surface border border-border flex items-center justify-center flex-shrink-0 text-text-muted">
-            {isMagnet ? (
+            {isMagnet && !torrentsEnabled ? (
+              <Ban className="w-4 h-4 text-danger" />
+            ) : isMagnet ? (
               <Magnet className="w-4 h-4 text-accent-1 animate-pulse" />
             ) : isHttp ? (
               <LinkIcon className="w-4 h-4 text-accent-2" />
@@ -72,7 +87,11 @@ export const AddBox: React.FC<AddBoxProps> = ({ onAdd, disabled = false }) => {
               setUri(e.target.value);
               if (error) setError(null);
             }}
-            placeholder="Paste magnet link or direct download URL (http / https)..."
+            placeholder={
+              torrentsEnabled
+                ? "Paste magnet link or direct download URL (http / https)..."
+                : "Paste direct download URL (torrents disabled in Colab)..."
+            }
             disabled={isSubmitting || disabled}
             className="flex-1 bg-transparent text-sm sm:text-base text-text placeholder-text-muted focus:outline-none"
             aria-label="Download source URI"
@@ -107,7 +126,13 @@ export const AddBox: React.FC<AddBoxProps> = ({ onAdd, disabled = false }) => {
           </button>
 
           <span className="font-mono text-[11px] opacity-70">
-            {isMagnet ? "Magnet link detected" : isHttp ? "Direct URL detected" : "Ready"}
+            {isMagnet && !torrentsEnabled
+              ? "🚫 Torrents disabled in Colab"
+              : isMagnet
+              ? "Magnet link detected"
+              : isHttp
+              ? "Direct URL detected"
+              : "Ready"}
           </span>
         </div>
 

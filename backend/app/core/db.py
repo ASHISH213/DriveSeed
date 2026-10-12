@@ -21,10 +21,19 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
+        connect_args = {}
+        engine_kwargs: dict[str, object] = {
+            "echo": settings.DEBUG,
+        }
+        if "sqlite" in settings.DATABASE_URL:
+            connect_args["check_same_thread"] = False
+        else:
+            engine_kwargs["pool_pre_ping"] = True
+
         _engine = create_async_engine(
             settings.DATABASE_URL,
-            echo=settings.DEBUG,
-            pool_pre_ping=True,
+            connect_args=connect_args,
+            **engine_kwargs,
         )
     return _engine
 

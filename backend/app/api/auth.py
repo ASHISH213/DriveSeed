@@ -53,6 +53,26 @@ async def get_current_user(
         else:
             user = await auth_service.get_current_user(db, session_token)
 
+    if not user and settings.PROFILE == "colab":
+        from sqlalchemy import select
+
+        colab_email = "colab@localhost"
+        stmt = select(User).where(User.email == colab_email)
+        res = await db.execute(stmt)
+        user = res.scalar_one_or_none()
+        if not user:
+            import uuid
+
+            user = User(
+                id=uuid.uuid4(),
+                email=colab_email,
+                google_sub="colab-local-owner",
+                drive_root_folder_id="root",
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -82,13 +102,34 @@ async def get_optional_user(
     if not session_token:
         session_token = request.query_params.get("token")
 
-    if not session_token:
-        return None
+    user: User | None = None
+    if session_token:
+        if session_token.startswith("ds_"):
+            user = await token_service.verify_token(db, session_token)
+        else:
+            user = await auth_service.get_current_user(db, session_token)
 
-    if session_token.startswith("ds_"):
-        return await token_service.verify_token(db, session_token)
+    if not user and settings.PROFILE == "colab":
+        from sqlalchemy import select
 
-    return await auth_service.get_current_user(db, session_token)
+        colab_email = "colab@localhost"
+        stmt = select(User).where(User.email == colab_email)
+        res = await db.execute(stmt)
+        user = res.scalar_one_or_none()
+        if not user:
+            import uuid
+
+            user = User(
+                id=uuid.uuid4(),
+                email=colab_email,
+                google_sub="colab-local-owner",
+                drive_root_folder_id="root",
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+
+    return user
 
 
 @router.get("/login", response_model=AuthUrlResponse)

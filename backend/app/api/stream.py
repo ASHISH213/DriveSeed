@@ -106,6 +106,24 @@ async def stream_media(
     )
 
 
+@router.get("/stream/{file_id}/handoff")
+@router.get("/api/stream/{file_id}/handoff")
+async def stream_handoff(
+    file_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> Response:
+    """Redirect to Google Drive native viewer for Colab compliance."""
+    from app.services.handoff_streamer import DriveHandoffStreamer
+
+    streamer = DriveHandoffStreamer()
+    resp = await streamer.stream(user=current_user, file_id=file_id, range_header=None)
+    return RedirectResponse(
+        url=resp.headers["Location"],
+        status_code=resp.status_code,
+        headers=resp.headers,
+    )
+
+
 def get_hls_service(settings: Annotated[Settings, Depends(get_settings)]) -> HlsTranscodeService:
     """Dependency provider returning active HlsTranscodeService instance."""
     if settings.PROFILE == "colab":

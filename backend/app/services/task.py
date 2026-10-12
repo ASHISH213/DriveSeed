@@ -149,7 +149,15 @@ class TaskService:
         request: TaskCreateRequest,
     ) -> Task:
         """Create a new download task in QUEUED state."""
+        source_type, info_hash, name = self._parse_source(
+            source_uri=request.source_uri,
+            custom_name=request.name,
+        )
+
         settings = get_settings()
+        if settings.PROFILE == "colab" and source_type == "magnet":
+            raise ValueError("Torrent downloading is strictly disabled in Colab mode.")
+
         if settings.MAX_ACTIVE_TASKS_PER_USER > 0:
             stmt = select(Task).where(Task.user_id == user.id)
             result = await db.execute(stmt)
@@ -157,11 +165,6 @@ class TaskService:
             active_count = len([t for t in user_tasks if t.state in ACTIVE_TASK_STATES])
             if active_count >= settings.MAX_ACTIVE_TASKS_PER_USER:
                 raise MaxActiveTasksExceededError(limit=settings.MAX_ACTIVE_TASKS_PER_USER)
-
-        source_type, info_hash, name = self._parse_source(
-            source_uri=request.source_uri,
-            custom_name=request.name,
-        )
 
         task = Task(
             user_id=user.id,
@@ -313,7 +316,8 @@ class TaskService:
         selected_size = sum(f.size_bytes for f in task.files if f.selected)
 
         # 2. Pre-flight check of Drive free space
-        if user.drive_refresh_token_enc and selected_size > 0:
+        drive_ready = user.drive_refresh_token_enc or (get_settings().PROFILE == "colab")
+        if drive_ready and selected_size > 0:
             quota = await self.storage_service.get_storage_quota(user)
             if selected_size > quota.free_bytes:
                 raise InsufficientStorageError(
