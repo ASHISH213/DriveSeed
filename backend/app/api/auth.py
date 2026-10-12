@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.core.db import get_db_session
+from app.core.rate_limit import SlidingWindowRateLimiter, get_auth_rate_limiter
 from app.core.security import create_session_token
 from app.models.user import User
 from app.schemas.auth import AuthUrlResponse, UserResponse
@@ -72,13 +73,18 @@ async def get_optional_user(
 
 @router.get("/login", response_model=AuthUrlResponse)
 async def login(
+    request: Request,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    auth_limiter: Annotated[SlidingWindowRateLimiter, Depends(get_auth_rate_limiter)],
     redirect_to: str = Query(default="/", description="Post-login destination"),
     redirect_browser: bool = Query(
         default=True, description="Directly redirect browser or return JSON"
     ),
 ) -> Response:
     """Initiate Google OAuth login flow."""
+    client_ip = request.client.host if request.client else "unknown"
+    await auth_limiter.check(client_ip)
+
     url = auth_service.get_login_url(redirect_to=redirect_to)
     if redirect_browser:
         return RedirectResponse(url=url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
@@ -87,13 +93,18 @@ async def login(
 
 @router.get("/callback")
 async def callback(
+    request: Request,
     code: str,
     state: str,
     db: Annotated[AsyncSession, Depends(get_db_session)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
     settings: Annotated[Settings, Depends(get_settings)],
+    auth_limiter: Annotated[SlidingWindowRateLimiter, Depends(get_auth_rate_limiter)],
 ) -> Response:
     """Handle Google OAuth redirect callback."""
+    client_ip = request.client.host if request.client else "unknown"
+    await auth_limiter.check(client_ip)
+
     try:
         user, redirect_to = await auth_service.handle_callback(
             db=db,

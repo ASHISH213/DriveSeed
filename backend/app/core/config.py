@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/callback"
 
+    # Rate Limits & Per-User Concurrency Caps
+    MAX_ACTIVE_TASKS_PER_USER: int = 3
+    MAX_CONCURRENT_STREAMS_PER_USER: int = 2
+    RATE_LIMIT_TASKS_PER_MINUTE: int = 10
+    RATE_LIMIT_AUTH_PER_MINUTE: int = 20
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, value: object) -> list[str]:

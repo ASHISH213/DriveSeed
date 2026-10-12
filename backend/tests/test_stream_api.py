@@ -324,3 +324,47 @@ async def test_stream_midstream_token_refresh(test_user: User) -> None:
     chunks = [c async for c in storage.open_range(test_user, "file_midstream", 0, 999)]
     assert token_refreshed is True
     assert len(b"".join(chunks)) == 1000
+
+
+@pytest.mark.asyncio
+async def test_stream_concurrency_cap_exceeded(
+    app_with_streamer,
+    test_user: User,
+    fake_storage: FakeStorageBackend,
+) -> None:
+    """Verify requesting more than concurrent streams limit yields HTTP 429."""
+    from app.core.rate_limit import get_stream_concurrency_limiter
+
+    limiter = get_stream_concurrency_limiter()
+    limiter.reset()
+
+    # Pre-populate 3 files in fake storage
+    for i in range(1, 4):
+        fid = f"stream_file_{i}"
+        content = b"X" * 500
+        fake_storage.files[fid] = StoredFile(
+            id=fid,
+            name=f"stream_file_{i}.mp4",
+            parent_id="root_folder_stream",
+            mime_type="video/mp4",
+            size_bytes=len(content),
+        )
+        fake_storage.file_data[fid] = content
+
+    # Simulate 2 active distinct file streams already acquired for test_user
+    await limiter.acquire(str(test_user.id), "stream_file_1")
+    await limiter.acquire(str(test_user.id), "stream_file_2")
+
+    transport = ASGITransport(app=app_with_streamer)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Requesting stream_file_1 again succeeds (concurrent range chunk on active file)
+        res1 = await client.get("/api/stream/stream_file_1", headers={"Range": "bytes=0-10"})
+        assert res1.status_code == 206
+
+        # Requesting a 3rd distinct file triggers 429 stream_cap_exceeded
+        res3 = await client.get("/api/stream/stream_file_3", headers={"Range": "bytes=0-10"})
+        assert res3.status_code == 429
+        body = res3.json()
+        assert body["detail"]["error"]["code"] == "stream_cap_exceeded"
+
+    limiter.reset()

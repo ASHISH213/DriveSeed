@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
 from app.core.db import get_db_session
+from app.core.rate_limit import SlidingWindowRateLimiter, get_tasks_rate_limiter
 from app.models.user import User
 from app.schemas.task import (
     TaskActionResponse,
@@ -17,6 +18,7 @@ from app.schemas.task import (
 )
 from app.services.task import (
     InsufficientStorageError,
+    MaxActiveTasksExceededError,
     TaskNotFoundError,
     TaskService,
 )
@@ -36,8 +38,11 @@ async def create_task(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
     task_service: Annotated[TaskService, Depends(get_task_service)],
+    tasks_limiter: Annotated[SlidingWindowRateLimiter, Depends(get_tasks_rate_limiter)],
 ) -> TaskResponse:
     """Submit a new download task."""
+    await tasks_limiter.check(str(current_user.id))
+
     try:
         task = await task_service.create_task(
             db=db,
@@ -45,6 +50,17 @@ async def create_task(
             request=request,
         )
         return TaskResponse.model_validate(task)
+    except MaxActiveTasksExceededError as err:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": {
+                    "code": "task_cap_exceeded",
+                    "message": f"Maximum active tasks limit ({err.limit}) reached. "
+                    "Please wait for an active task to finish or cancel one.",
+                }
+            },
+        ) from err
     except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -181,6 +197,17 @@ async def retry_task(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "not_found", "message": str(err)}},
+        ) from err
+    except MaxActiveTasksExceededError as err:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": {
+                    "code": "task_cap_exceeded",
+                    "message": f"Maximum active tasks limit ({err.limit}) reached. "
+                    "Please wait for an active task to finish or cancel one.",
+                }
+            },
         ) from err
     except InvalidStateTransitionError as err:
         raise HTTPException(

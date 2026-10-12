@@ -167,11 +167,36 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
   const handleWaiting = () => setIsBuffering(true);
   const handlePlaying = () => setIsBuffering(false);
 
-  const handleError = () => {
+  const handleError = async () => {
+    setIsBuffering(false);
+    try {
+      const res = await fetch(`/api/stream/${fileId}`, {
+        headers: { Range: "bytes=0-0" },
+      });
+      if (res.status === 429) {
+        const body = (await res.json().catch(() => null)) as
+          | { error?: { message?: string } }
+          | null;
+        setPlayerError(
+          body?.error?.message ||
+            "Maximum concurrent stream limit reached. Please pause or close another active stream."
+        );
+        return;
+      }
+      if (res.status === 403) {
+        setPlayerError("Media streaming is disabled in this environment.");
+        return;
+      }
+      if (res.status === 404) {
+        setPlayerError("Media file was not found in storage.");
+        return;
+      }
+    } catch {
+      // Network or parsing error fallback
+    }
     setPlayerError(
       "Unable to stream media. The file format may require transcoding or is unavailable."
     );
-    setIsBuffering(false);
   };
 
   // Play / Pause toggle

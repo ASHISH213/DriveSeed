@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import get_settings
 from app.interfaces.queue import TaskQueue
 from app.models.task import Task
 from app.models.user import User
@@ -20,6 +21,15 @@ from app.services.task_state import (
     TaskState,
     TaskStateMachine,
 )
+
+ACTIVE_TASK_STATES = {
+    TaskState.QUEUED.value,
+    TaskState.FETCHING_METADATA.value,
+    TaskState.AWAITING_SELECTION.value,
+    TaskState.DOWNLOADING.value,
+    TaskState.PAUSED.value,
+    TaskState.UPLOADING.value,
+}
 
 
 class TaskNotFoundError(Exception):
@@ -40,6 +50,14 @@ class InsufficientStorageError(Exception):
             f"Insufficient Drive storage: requires {required_bytes} bytes, "
             f"but only {free_bytes} bytes are free."
         )
+
+
+class MaxActiveTasksExceededError(Exception):
+    """Exception raised when user has reached the maximum number of concurrent active tasks."""
+
+    def __init__(self, limit: int) -> None:
+        self.limit = limit
+        super().__init__(f"Maximum active tasks limit ({limit}) reached.")
 
 
 class TaskService:
@@ -131,6 +149,15 @@ class TaskService:
         request: TaskCreateRequest,
     ) -> Task:
         """Create a new download task in QUEUED state."""
+        settings = get_settings()
+        if settings.MAX_ACTIVE_TASKS_PER_USER > 0:
+            stmt = select(Task).where(Task.user_id == user.id)
+            result = await db.execute(stmt)
+            user_tasks = result.scalars().all()
+            active_count = len([t for t in user_tasks if t.state in ACTIVE_TASK_STATES])
+            if active_count >= settings.MAX_ACTIVE_TASKS_PER_USER:
+                raise MaxActiveTasksExceededError(limit=settings.MAX_ACTIVE_TASKS_PER_USER)
+
         source_type, info_hash, name = self._parse_source(
             source_uri=request.source_uri,
             custom_name=request.name,
@@ -240,10 +267,21 @@ class TaskService:
     ) -> Task:
         """Retry a failed task by clearing error and transitioning back to QUEUED."""
         task = await self.get_task(db, user, task_id)
+        settings = get_settings()
+        if settings.MAX_ACTIVE_TASKS_PER_USER > 0:
+            stmt = select(Task).where(Task.user_id == user.id)
+            result = await db.execute(stmt)
+            user_tasks = result.scalars().all()
+            active_count = len([t for t in user_tasks if t.state in ACTIVE_TASK_STATES])
+            if active_count >= settings.MAX_ACTIVE_TASKS_PER_USER:
+                raise MaxActiveTasksExceededError(limit=settings.MAX_ACTIVE_TASKS_PER_USER)
+
         TaskStateMachine.transition(task, TaskState.QUEUED)
         task.error = None
         await db.commit()
         await db.refresh(task)
+        if self.queue:
+            await self.queue.enqueue("process_download_task", task_id=str(task.id))
         await self._emit_event(task)
         return task
 

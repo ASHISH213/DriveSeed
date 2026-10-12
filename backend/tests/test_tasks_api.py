@@ -437,3 +437,109 @@ async def test_task_retry_lifecycle(
         not_found_resp = await client.post(f"/api/tasks/{random_id}/retry")
         assert not_found_resp.status_code == 404
         assert not_found_resp.json()["detail"]["error"]["code"] == "not_found"
+
+
+@pytest.mark.asyncio
+async def test_create_task_active_cap_exceeded(
+    app_with_db,
+    fake_db: FakeAsyncSession,
+    test_user: User,
+    auth_headers_and_cookies: dict[str, str],
+) -> None:
+    """Verify POST /api/tasks returns 429 when user has 3 active tasks."""
+    for i in range(3):
+        fake_db.add(
+            Task(
+                user_id=test_user.id,
+                source_type="url",
+                source_uri=f"https://example.com/file{i}.zip",
+                name=f"file{i}.zip",
+                state="downloading",
+            )
+        )
+
+    transport = ASGITransport(app=app_with_db)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=auth_headers_and_cookies
+    ) as client:
+        res = await client.post(
+            "/api/tasks",
+            json={"source_uri": "https://example.com/exceed.zip"},
+        )
+        assert res.status_code == 429
+        body = res.json()
+        assert body["detail"]["error"]["code"] == "task_cap_exceeded"
+        assert "3" in body["detail"]["error"]["message"]
+
+
+@pytest.mark.asyncio
+async def test_retry_task_active_cap_exceeded(
+    app_with_db,
+    fake_db: FakeAsyncSession,
+    test_user: User,
+    auth_headers_and_cookies: dict[str, str],
+) -> None:
+    """Verify POST /api/tasks/{id}/retry returns 429 when user already has 3 active tasks."""
+    for i in range(3):
+        fake_db.add(
+            Task(
+                user_id=test_user.id,
+                source_type="url",
+                source_uri=f"https://example.com/file{i}.zip",
+                name=f"file{i}.zip",
+                state="downloading",
+            )
+        )
+    failed_task = Task(
+        user_id=test_user.id,
+        source_type="url",
+        source_uri="https://example.com/failed.zip",
+        name="failed.zip",
+        state="failed",
+    )
+    fake_db.add(failed_task)
+
+    transport = ASGITransport(app=app_with_db)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=auth_headers_and_cookies
+    ) as client:
+        res = await client.post(f"/api/tasks/{failed_task.id}/retry")
+        assert res.status_code == 429
+        body = res.json()
+        assert body["detail"]["error"]["code"] == "task_cap_exceeded"
+
+
+@pytest.mark.asyncio
+async def test_create_task_rate_limit_exceeded(
+    app_with_db,
+    auth_headers_and_cookies: dict[str, str],
+) -> None:
+    """Verify POST /api/tasks returns 429 when rate limit of 10 requests per minute is exceeded."""
+    from app.core.rate_limit import get_tasks_rate_limiter
+
+    limiter = get_tasks_rate_limiter()
+    limiter.reset()
+
+    transport = ASGITransport(app=app_with_db)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=auth_headers_and_cookies
+    ) as client:
+        for _ in range(10):
+            res = await client.post(
+                "/api/tasks",
+                json={"source_uri": "https://example.com/file.zip"},
+            )
+            if res.status_code == 429:
+                assert res.json()["detail"]["error"]["code"] == "task_cap_exceeded"
+
+        # 11th request MUST be rate limited
+        res11 = await client.post(
+            "/api/tasks",
+            json={"source_uri": "https://example.com/file.zip"},
+        )
+        assert res11.status_code == 429
+        body = res11.json()
+        assert body["detail"]["error"]["code"] == "rate_limit_exceeded"
+        assert "Retry-After" in res11.headers
+
+    limiter.reset()

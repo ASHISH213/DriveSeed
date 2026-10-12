@@ -200,3 +200,29 @@ async def test_auth_me_and_logout_endpoints() -> None:
         logout_resp = await client.post("/api/auth/logout")
         assert logout_resp.status_code == 200
         assert logout_resp.json() == {"status": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_auth_rate_limit_exceeded() -> None:
+    """Verify exceeding RATE_LIMIT_AUTH_PER_MINUTE on /api/auth/login returns 429."""
+    from app.core.rate_limit import get_auth_rate_limiter
+
+    limiter = get_auth_rate_limiter()
+    limiter.reset()
+
+    app = create_app()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Send 20 requests (default RATE_LIMIT_AUTH_PER_MINUTE is 20)
+        for _ in range(20):
+            res = await client.get("/api/auth/login?redirect_browser=false")
+            assert res.status_code == 200
+
+        # 21st request triggers rate limit 429
+        res21 = await client.get("/api/auth/login?redirect_browser=false")
+        assert res21.status_code == 429
+        body = res21.json()
+        assert body["detail"]["error"]["code"] == "rate_limit_exceeded"
+        assert "Retry-After" in res21.headers
+
+    limiter.reset()
