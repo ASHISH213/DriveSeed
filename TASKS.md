@@ -60,7 +60,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 ## M3b: Design system, motion, and interaction
 - [x] **M3b.1 Command Palette (`Ctrl/Cmd+K`).** Global keyboard shortcut modal to search files, filter tasks, trigger navigation and quick actions.
 - [x] **M3b.2 Signature animations.** Complete animations from `DESIGN.md` Section 6 (progress bar sheen, animated speed ticker, SVG path checkmark, shared layout transitions).
-- [ ] **M3b.3 PWA and performance pass.** Web App manifest, service worker for offline shell/PWA installability, Lighthouse performance pass.
+- [x] **M3b.3 PWA and performance pass.** Web App manifest, service worker for offline shell/PWA installability, Lighthouse performance pass.
 
 ## Later phases (break these into small tasks when you reach them)
 - **M4 Advanced streaming:** FFmpeg HLS transcoding, subtitles, stream-while-downloading.
@@ -80,3 +80,4 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - 2026-10-12: implemented production deployment configuration with multi-stage Dockerfile (SPA build + runtime), Caddyfile with automatic TLS and unbuffered streaming (flush_interval -1), docker-compose with Caddy, API, worker, Postgres and Redis, and documented full VPS/home server setup in README (M3.4)
 - 2026-10-12: implemented Command Palette modal with global Ctrl+K / Cmd+K shortcut, header trigger button with ⌘K badge, debounced Google Drive file search, task status filtering, quick actions (tab navigation, add download, theme toggle, sign in/out), and keyboard navigation with arrow keys and Enter (M3b.1)
 - 2026-10-12: implemented signature animations from DESIGN.md section 6: 45-degree diagonal animated sheen on ProgressBar, cloud-to-drive path indicator on uploading, AnimatedTicker for speed and ETA numbers, self-drawing SVG AnimatedCheckmark, lightweight celebratory ConfettiBurst (≤40 particles, ≤600ms), shared layout morphing across Library grid/list with layoutId, and 8px slide-fade page transitions (M3b.2)
+- 2026-10-12: implemented PWA support and performance pass with manifest.webmanifest (standalone, dark theme #0B0D12, app shortcuts, maskable icons), sw.js service worker (offline shell caching, cache-first hashed assets, network-first navigate fallback, network-only API/SSE bypass), PWA installation listener/helpers, Caddyfile caching headers, and SVG icon suite (M3b.3)

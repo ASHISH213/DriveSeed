@@ -16,6 +16,16 @@
         -Server
     }
 
+    # PWA & static assets caching optimization
+    @assets path /assets/*
+    header @assets Cache-Control "public, max-age=31536000, immutable"
+
+    @sw path /sw.js
+    header @sw Cache-Control "public, max-age=0, must-revalidate"
+
+    @manifest path /manifest.webmanifest
+    header @manifest Cache-Control "public, max-age=86400"
+
     # Disable response buffering for Server-Sent Events (SSE) and media Range streaming
     @streaming {
         path /stream/*

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" fill="none">
+  <defs>
+    <linearGradient id="brandGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <radialGradient id="glow192" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="192" height="192" rx="44" fill="#0B0D12"/>
+  <circle cx="96" cy="96" r="80" fill="url(#glow192)"/>
+  <rect x="6" y="6" width="180" height="180" rx="38" stroke="url(#brandGrad192)" stroke-width="3" stroke-opacity="0.5"/>
+  <!-- Magnet / Seed glyph -->
+  <path d="M60 56v42a36 36 0 0 0 72 0V56" stroke="url(#brandGrad192)" stroke-width="15" stroke-linecap="round"/>
+  <path d="M56 74h22M114 74h22" stroke="#E8EAF0" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="96" cy="126" r="8" fill="#34D399"/>
+</svg>
