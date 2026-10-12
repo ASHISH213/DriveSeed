@@ -70,8 +70,17 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - [x] **M4.3 Stream-while-downloading.** Sequential download mode in `TorrentEngine` prioritizing boundary pieces, streaming active downloads from scratch disk, and "Stream Now" button on downloading tasks.
   *Done when:* an active torrent video can be streamed in the browser before the task completes downloading.
 
-## Later phases (break these into small tasks when you reach them)
-- **M5 Automation:** API tokens, webhooks, RSS, Telegram bot.
+## M5: Automation (about 2–3 weeks)
+- [x] **M5.1 Personal API tokens & authentication.** Secure API tokens (`ds_...`), SHA-256 storage, dual-auth in `get_current_user`, CRUD endpoints (`/api/tokens`), and frontend token manager UI.
+  *Done when:* a user can generate a token in the UI, use it to call `/api/tasks` and `/api/files` via curl with `Authorization: Bearer ds_...`, and revoke it.
+- [ ] **M5.2 Webhooks on task lifecycle.** Webhook endpoint registration, HMAC-SHA256 signature header (`X-DriveSeed-Signature`), automatic payload dispatching on task completion/failure with retry logic.
+  *Done when:* task completions deliver signed webhook payloads to a registered endpoint.
+- [ ] **M5.3 RSS auto-downloader.** Scheduled feed fetching, title/category regex filtering, deduplication, automatic download task creation and start.
+  *Done when:* an RSS feed with a regex match auto-triggers a new download task.
+- [ ] **M5.4 Telegram bot integration.** Bot service (`/start`, `/add <magnet|url>`, `/status`, `/library`) and completion notifications.
+  *Done when:* sending a magnet link to the Telegram bot starts a task and notifies on completion.
+
+## M6: Colab Edition (about 2 weeks)
 - **M6 Colab Edition:** `colab` profile implementations (`MountedDriveStorage`, `InProcessQueue`, SQLite, single-user auth, `DriveHandoffStreamer`), notebook, `/api/capabilities`, acceptance criteria from PRD section 18.6.
 
 ## Notes for you (not the agent)
@@ -91,6 +100,8 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - 2026-10-12: implemented subtitle support (M4.1) with SubtitleService for sidecar .srt/.vtt auto-detection in Drive folders/subfolders, on-the-fly SubRip to WebVTT conversion with BOM and timestamp parsing, GET /api/files/{id}/subtitles and GET /api/files/{id}/subtitles/{sub_id} endpoints, PlayerShell subtitle track dropdown menu with language badges, HTML5 track rendering with custom ::cue styling, and keyboard shortcut cycling (C)
 - 2026-10-12: implemented FFmpeg HLS on-demand transcoding (M4.2) with HlsTranscodeService, GET /hls/{id}/index.m3u8 and /hls/{id}/{segment} routes, MAX_CONCURRENT_TRANSCODES concurrency limiter (HTTP 429), PROFILE=colab refusal (HTTP 403), PlayerShell hls.js integration with animated HLS badge, auto-fallback on direct play errors, and manual HLS/Direct toggle
 - 2026-10-12: implemented stream-while-downloading (M4.3) with TorrentEngine sequential piece downloading and priority 7 boundary piece allocation (pieces 0, 1, last), GET /stream/task/{id} scratch disk range streaming endpoint with 206 Partial Content, buffer pre-flight guards (425 Too Early), Colab profile guard (403), PlayerModal/PlayerShell task support, and TaskCard "Stream Now" button on active downloading tasks
+- 2026-10-12: implemented personal API tokens & authentication (M5.1) with cryptographically secure token format (`ds_...`), SHA-256 hash storage at rest in `api_tokens` table, migration `20261012_04`, dual-auth support in `get_current_user`/`get_optional_user` for Bearer `ds_...` headers, POST/GET/DELETE `/api/tokens` endpoints, `useTokens` hook, `ApiTokensCard` UI with one-time reveal modal, copy-to-clipboard, active token table with prefix/label/created/last-used, revoke action, `Settings` page, `AppShell` nav tab, and Command Palette integration
+
 
 
 

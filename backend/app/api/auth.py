@@ -13,6 +13,7 @@ from app.core.security import create_session_token
 from app.models.user import User
 from app.schemas.auth import AuthUrlResponse, UserResponse
 from app.services.auth import AuthError, AuthService
+from app.services.token import ApiTokenService
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
@@ -24,10 +25,16 @@ def get_auth_service(
     return AuthService(settings=settings)
 
 
+def get_token_service() -> ApiTokenService:
+    """Dependency provider for ApiTokenService."""
+    return ApiTokenService()
+
+
 async def get_current_user(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db_session)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    token_service: Annotated[ApiTokenService, Depends(get_token_service)],
 ) -> User:
     """Dependency that resolves the authenticated User or raises 401."""
     settings = get_settings()
@@ -39,7 +46,13 @@ async def get_current_user(
     if not session_token:
         session_token = request.query_params.get("token")
 
-    user = await auth_service.get_current_user(db, session_token)
+    user: User | None = None
+    if session_token:
+        if session_token.startswith("ds_"):
+            user = await token_service.verify_token(db, session_token)
+        else:
+            user = await auth_service.get_current_user(db, session_token)
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -57,6 +70,7 @@ async def get_optional_user(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db_session)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    token_service: Annotated[ApiTokenService, Depends(get_token_service)],
 ) -> User | None:
     """Dependency that resolves the authenticated User if logged in, else None."""
     settings = get_settings()
@@ -67,6 +81,12 @@ async def get_optional_user(
             session_token = auth_header[7:].strip()
     if not session_token:
         session_token = request.query_params.get("token")
+
+    if not session_token:
+        return None
+
+    if session_token.startswith("ds_"):
+        return await token_service.verify_token(db, session_token)
 
     return await auth_service.get_current_user(db, session_token)
 

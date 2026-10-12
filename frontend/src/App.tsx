@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AppShell } from "@/components/AppShell";
 import { Dashboard } from "@/pages/Dashboard";
 import { Library } from "@/pages/Library";
+import { Settings } from "@/pages/Settings";
 import { PlayerModal } from "@/components/player/PlayerModal";
 import type { LibraryItem } from "@/types/library";
 import { duration, ease } from "@/lib/motion";
 
-export type NavTab = "downloads" | "library";
+export type NavTab = "downloads" | "library" | "settings";
 
 export function App() {
   const [activeTab, setActiveTab] = useState<NavTab>("downloads");
@@ -28,7 +29,13 @@ export function App() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: duration.base, ease: ease.out }}
           >
-            {activeTab === "downloads" ? <Dashboard /> : <Library />}
+            {activeTab === "downloads" ? (
+              <Dashboard />
+            ) : activeTab === "library" ? (
+              <Library />
+            ) : (
+              <Settings />
+            )}
           </motion.div>
         </AnimatePresence>
       </AppShell>

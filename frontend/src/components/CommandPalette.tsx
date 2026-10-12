@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Command,
   X,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMotionPreset } from "@/lib/motion";
@@ -29,7 +30,7 @@ import type { User } from "@/hooks/useAuth";
 export interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
-  onNavigateTab: (tab: "downloads" | "library") => void;
+  onNavigateTab: (tab: "downloads" | "library" | "settings") => void;
   onPlayFile?: (file: LibraryItem) => void;
   onOpenAddDownload?: () => void;
   onToggleTheme?: () => void;
@@ -182,6 +183,18 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         category: "Navigation",
         execute: () => {
           onNavigateTab("library");
+          onClose();
+        },
+      },
+      {
+        type: "action",
+        id: "nav-settings",
+        title: "Go to Settings & API Tokens",
+        subtitle: "Manage personal access tokens and automation",
+        icon: <SettingsIcon className="w-4 h-4 text-accent-1" />,
+        category: "Navigation",
+        execute: () => {
+          onNavigateTab("settings");
           onClose();
         },
       },

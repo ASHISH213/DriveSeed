@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Moon, Sun, Sparkles, LogIn, LogOut, User as UserIcon, Download, Folder, Search } from "lucide-react";
+import { Moon, Sun, Sparkles, LogIn, LogOut, User as UserIcon, Download, Folder, Settings as SettingsIcon, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMotionPreset } from "@/lib/motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,8 +10,8 @@ import type { LibraryItem } from "@/types/library";
 export type Theme = "dark" | "light";
 
 interface AppShellProps {
-  activeTab?: "downloads" | "library";
-  onTabChange?: (tab: "downloads" | "library") => void;
+  activeTab?: "downloads" | "library" | "settings";
+  onTabChange?: (tab: "downloads" | "library" | "settings") => void;
   onPlayFile?: (file: LibraryItem) => void;
   children?: React.ReactNode;
 }
@@ -107,6 +107,19 @@ export function AppShell({ activeTab = "downloads", onTabChange, onPlayFile, chi
                 >
                   <Folder className="w-3.5 h-3.5" />
                   <span>Library</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onTabChange("settings")}
+                  data-testid="nav-tab-settings"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    activeTab === "settings"
+                      ? "bg-accent-1 text-white shadow-sm"
+                      : "text-text-muted hover:text-text hover:bg-surface-hover"
+                  }`}
+                >
+                  <SettingsIcon className="w-3.5 h-3.5" />
+                  <span>Settings</span>
                 </button>
               </nav>
             )}

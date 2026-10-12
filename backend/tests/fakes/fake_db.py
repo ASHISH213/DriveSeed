@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from app.models.api_token import ApiToken
 from app.models.playback import Playback
 from app.models.task import Task
 from app.models.task_file import TaskFile
@@ -46,6 +47,7 @@ class FakeAsyncSession:
         self.users: dict[uuid.UUID, User] = {}
         self.tasks: dict[uuid.UUID, Task] = {}
         self.playbacks: dict[tuple[uuid.UUID, str], Any] = {}
+        self.api_tokens: dict[uuid.UUID, ApiToken] = {}
         self.added: list[Any] = []
 
     def add(self, instance: Any) -> None:
@@ -71,6 +73,12 @@ class FakeAsyncSession:
                     task.files = []
                 if instance not in task.files:
                     task.files.append(instance)
+        elif isinstance(instance, ApiToken):
+            if instance.id is None:
+                instance.id = uuid.uuid4()
+            if getattr(instance, "created_at", None) is None:
+                instance.created_at = datetime.now(UTC)
+            self.api_tokens[instance.id] = instance
         else:
             # Playback or generic
             user_id = getattr(instance, "user_id", None)
@@ -81,6 +89,8 @@ class FakeAsyncSession:
     async def delete(self, instance: Any) -> None:
         if instance in self.added:
             self.added.remove(instance)
+        if isinstance(instance, ApiToken):
+            self.api_tokens.pop(instance.id, None)
         user_id = getattr(instance, "user_id", None)
         file_id = getattr(instance, "file_id", None)
         if user_id is not None and file_id is not None:
@@ -143,6 +153,33 @@ class FakeAsyncSession:
                     if file_id_param and fid != file_id_param:
                         continue
                     matching.append(p)
+            elif entity is ApiToken:
+                hash_param = next(
+                    (v for v in params.values() if isinstance(v, str) and len(v) == 64), None
+                )
+                user_id_param = next(
+                    (v for k, v in params.items() if "user_id" in k and isinstance(v, uuid.UUID)),
+                    None,
+                )
+                id_param = next(
+                    (
+                        v
+                        for k, v in params.items()
+                        if "id" in k and "user_id" not in k and isinstance(v, uuid.UUID)
+                    ),
+                    None,
+                )
+                for tok in self.api_tokens.values():
+                    if hash_param and tok.token_hash != hash_param:
+                        continue
+                    if user_id_param and tok.user_id != user_id_param:
+                        continue
+                    if id_param and tok.id != id_param:
+                        continue
+                    matching.append(tok)
+                matching.sort(
+                    key=lambda x: x.created_at or datetime.min.replace(tzinfo=UTC), reverse=True
+                )
             else:
                 # Fallback matching for backward compatibility
                 for u in self.users.values():
@@ -163,4 +200,6 @@ class FakeAsyncSession:
             return self.users.get(ident)
         if entity_class is Task and isinstance(ident, uuid.UUID):
             return self.tasks.get(ident)
+        if entity_class is ApiToken and isinstance(ident, uuid.UUID):
+            return self.api_tokens.get(ident)
         return None
