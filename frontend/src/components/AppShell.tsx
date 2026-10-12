@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Moon, Sun, HardDrive, Sparkles, LogIn, LogOut, User as UserIcon, Download, Folder } from "lucide-react";
+import { Moon, Sun, Sparkles, LogIn, LogOut, User as UserIcon, Download, Folder } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMotionPreset } from "@/lib/motion";
 import { useAuth } from "@/hooks/useAuth";
+import { StorageRing } from "@/components/StorageRing";
 
 export type Theme = "dark" | "light";
 
@@ -96,37 +97,8 @@ export function AppShell({ activeTab = "downloads", onTabChange, children }: App
 
           {/* Right Controls: Storage Indicator, Auth Status & Theme Toggle */}
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* Storage Ring Stub */}
-            <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-border hover:bg-surface-hover transition-colors"
-              title="Google Drive Storage (Connecting...)"
-              data-testid="storage-indicator"
-            >
-              <div className="relative w-5 h-5 flex items-center justify-center">
-                <svg className="w-5 h-5 transform -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-border"
-                    strokeWidth="4"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <path
-                    className="text-success"
-                    strokeDasharray="25, 100"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <HardDrive className="w-2.5 h-2.5 text-text-muted absolute" />
-              </div>
-              <span className="text-xs font-mono tabular-nums text-text-muted hidden sm:inline">
-                Drive Ready
-              </span>
-            </div>
+            {/* Storage Meter Ring */}
+            <StorageRing isLoggedIn={!!user} />
 
             {/* User Auth Section */}
             {isLoading ? (

@@ -49,7 +49,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - [x] **M2.2 Range streaming proxy.** `GET /stream/{file_id}` with correct `206`, `Content-Range`, `Accept-Ranges`; token refresh mid-stream.
   *Done when:* an MP4 in Drive plays in the browser and seeking works.
 - [x] **M2.3 Player v1.** Vidstack/Video.js shell, resume position saved in `playback`, keyboard shortcuts.
-- [ ] **M2.4 Storage meter.** `GET /api/storage` and the `StorageRing` component.
+- [x] **M2.4 Storage meter.** `GET /api/storage` and the `StorageRing` component.
 
 ## M3: Polish (about 2 weeks)
 - [ ] **M3.1 File selection modal** with checkboxes, total size, Drive free-space check and folder picker.
@@ -69,3 +69,4 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 
 ## Decisions log
 - 2026-10-12: implemented custom frosted-glass PlayerShell with native HTML5 media engine, keyboard shortcuts, resume position tracking via `/api/playback/{file_id}`, and skip ripples (M2.3)
+- 2026-10-12: implemented GET /api/storage endpoint and animated StorageRing component with adaptive color thresholds (<75% success, 75-90% warning, >=90% danger) and hover breakdown (M2.4)

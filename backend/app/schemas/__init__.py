@@ -3,6 +3,7 @@
 from app.schemas.auth import AuthUrlResponse, UserResponse
 from app.schemas.health import HealthResponse
 from app.schemas.playback import PlaybackResponse, PlaybackUpdateRequest
+from app.schemas.storage import StorageResponse
 from app.schemas.task import (
     TaskActionResponse,
     TaskCreateRequest,
@@ -15,6 +16,7 @@ __all__ = [
     "HealthResponse",
     "PlaybackResponse",
     "PlaybackUpdateRequest",
+    "StorageResponse",
     "TaskActionResponse",
     "TaskCreateRequest",
     "TaskFileResponse",
