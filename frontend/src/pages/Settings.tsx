@@ -1,6 +1,7 @@
 import React from "react";
 import { Sliders, LogIn, AlertCircle } from "lucide-react";
 import { ApiTokensCard } from "@/components/settings/ApiTokensCard";
+import { WebhooksCard } from "@/components/settings/WebhooksCard";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Settings: React.FC = () => {
@@ -51,8 +52,10 @@ export const Settings: React.FC = () => {
       </div>
 
       <ApiTokensCard />
+      <WebhooksCard />
     </div>
   );
 };
 
 export default Settings;
+

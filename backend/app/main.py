@@ -17,6 +17,7 @@ from app.api.storage import router as storage_router
 from app.api.stream import router as stream_router
 from app.api.tasks import router as tasks_router
 from app.api.tokens import router as tokens_router
+from app.api.webhooks import router as webhooks_router
 from app.core.config import Settings, get_settings
 from app.core.db import check_db_connection, close_db_connection
 from app.core.redis import check_redis_connection, close_redis_connection
@@ -79,6 +80,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(storage_router)
     app.include_router(stream_router)
     app.include_router(tokens_router)
+    app.include_router(webhooks_router)
 
     dist_dir = (
         Path(app_settings.FRONTEND_DIST_DIR).resolve()

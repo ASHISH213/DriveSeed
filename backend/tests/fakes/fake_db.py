@@ -9,6 +9,7 @@ from app.models.playback import Playback
 from app.models.task import Task
 from app.models.task_file import TaskFile
 from app.models.user import User
+from app.models.webhook import WebhookEndpoint
 
 
 class FakeScalarResult:
@@ -48,6 +49,7 @@ class FakeAsyncSession:
         self.tasks: dict[uuid.UUID, Task] = {}
         self.playbacks: dict[tuple[uuid.UUID, str], Any] = {}
         self.api_tokens: dict[uuid.UUID, ApiToken] = {}
+        self.webhook_endpoints: dict[uuid.UUID, WebhookEndpoint] = {}
         self.added: list[Any] = []
 
     def add(self, instance: Any) -> None:
@@ -79,6 +81,12 @@ class FakeAsyncSession:
             if getattr(instance, "created_at", None) is None:
                 instance.created_at = datetime.now(UTC)
             self.api_tokens[instance.id] = instance
+        elif isinstance(instance, WebhookEndpoint):
+            if instance.id is None:
+                instance.id = uuid.uuid4()
+            if getattr(instance, "created_at", None) is None:
+                instance.created_at = datetime.now(UTC)
+            self.webhook_endpoints[instance.id] = instance
         else:
             # Playback or generic
             user_id = getattr(instance, "user_id", None)
@@ -91,6 +99,8 @@ class FakeAsyncSession:
             self.added.remove(instance)
         if isinstance(instance, ApiToken):
             self.api_tokens.pop(instance.id, None)
+        if isinstance(instance, WebhookEndpoint):
+            self.webhook_endpoints.pop(instance.id, None)
         user_id = getattr(instance, "user_id", None)
         file_id = getattr(instance, "file_id", None)
         if user_id is not None and file_id is not None:
@@ -180,6 +190,28 @@ class FakeAsyncSession:
                 matching.sort(
                     key=lambda x: x.created_at or datetime.min.replace(tzinfo=UTC), reverse=True
                 )
+            elif entity is WebhookEndpoint:
+                user_id_param = next(
+                    (v for k, v in params.items() if "user_id" in k and isinstance(v, uuid.UUID)),
+                    None,
+                )
+                id_param = next(
+                    (
+                        v
+                        for k, v in params.items()
+                        if "id" in k and "user_id" not in k and isinstance(v, uuid.UUID)
+                    ),
+                    None,
+                )
+                for ep in self.webhook_endpoints.values():
+                    if user_id_param and ep.user_id != user_id_param:
+                        continue
+                    if id_param and ep.id != id_param:
+                        continue
+                    matching.append(ep)
+                matching.sort(
+                    key=lambda x: x.created_at or datetime.min.replace(tzinfo=UTC), reverse=True
+                )
             else:
                 # Fallback matching for backward compatibility
                 for u in self.users.values():
@@ -202,4 +234,6 @@ class FakeAsyncSession:
             return self.tasks.get(ident)
         if entity_class is ApiToken and isinstance(ident, uuid.UUID):
             return self.api_tokens.get(ident)
+        if entity_class is WebhookEndpoint and isinstance(ident, uuid.UUID):
+            return self.webhook_endpoints.get(ident)
         return None

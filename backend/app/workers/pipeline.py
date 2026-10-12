@@ -264,6 +264,22 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
                 total_bytes=task.size_bytes or 0,
             )
 
+            # Dispatch task.completed webhook notifications
+            try:
+                from app.services.webhook import WebhookService
+
+                webhook_service = WebhookService()
+                await webhook_service.dispatch_task_event(
+                    db=db,
+                    user_id=task.user_id,
+                    event_name="task.completed",
+                    task=task,
+                )
+            except Exception as hook_err:
+                logger.warning(
+                    "Webhook dispatch failed for completed task %s: %s", task_id, hook_err
+                )
+
         except Exception as err:
             logger.exception("Pipeline failed for task %s: %s", task_id, err)
             task.state = TaskState.FAILED.value
@@ -276,3 +292,17 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
             )
             # Ensure local temp directory is always deleted on failure
             shutil.rmtree(task_dest, ignore_errors=True)
+
+            # Dispatch task.failed webhook notifications
+            try:
+                from app.services.webhook import WebhookService
+
+                webhook_service = WebhookService()
+                await webhook_service.dispatch_task_event(
+                    db=db,
+                    user_id=task.user_id,
+                    event_name="task.failed",
+                    task=task,
+                )
+            except Exception as hook_err:
+                logger.warning("Webhook dispatch failed for failed task %s: %s", task_id, hook_err)
