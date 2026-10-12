@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { Moon, Sun, Sparkles, LogIn, LogOut, User as UserIcon, Download, Folder } from "lucide-react";
+import { Moon, Sun, Sparkles, LogIn, LogOut, User as UserIcon, Download, Folder, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMotionPreset } from "@/lib/motion";
 import { useAuth } from "@/hooks/useAuth";
 import { StorageRing } from "@/components/StorageRing";
+import { CommandPalette } from "@/components/CommandPalette";
+import type { LibraryItem } from "@/types/library";
 
 export type Theme = "dark" | "light";
 
 interface AppShellProps {
   activeTab?: "downloads" | "library";
   onTabChange?: (tab: "downloads" | "library") => void;
+  onPlayFile?: (file: LibraryItem) => void;
   children?: React.ReactNode;
 }
 
-export function AppShell({ activeTab = "downloads", onTabChange, children }: AppShellProps) {
+export function AppShell({ activeTab = "downloads", onTabChange, onPlayFile, children }: AppShellProps) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("driveseed-theme") as Theme | null;
@@ -22,8 +25,22 @@ export function AppShell({ activeTab = "downloads", onTabChange, children }: App
     }
     return "dark";
   });
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
 
   const { user, isLoading, login, logout } = useAuth();
+
+  // Global Ctrl+K / Cmd+K shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsPaletteOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -96,7 +113,23 @@ export function AppShell({ activeTab = "downloads", onTabChange, children }: App
           </div>
 
           {/* Right Controls: Storage Indicator, Auth Status & Theme Toggle */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Command Palette Trigger */}
+            <button
+              type="button"
+              onClick={() => setIsPaletteOpen(true)}
+              data-testid="command-palette-trigger"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg bg-surface border border-border text-text-muted hover:text-text hover:border-accent-1/40 text-xs transition-all shadow-sm"
+              aria-label="Open command palette"
+              title="Search or commands (Ctrl+K)"
+            >
+              <Search className="w-3.5 h-3.5 text-text-muted" />
+              <span className="hidden sm:inline text-xs">Search...</span>
+              <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-bg rounded border border-border text-text-muted">
+                ⌘K
+              </kbd>
+            </button>
+
             {/* Storage Meter Ring */}
             <StorageRing isLoggedIn={!!user} />
 
@@ -171,6 +204,26 @@ export function AppShell({ activeTab = "downloads", onTabChange, children }: App
           )}
         </motion.div>
       </main>
+
+      {/* Global Command Palette */}
+      <CommandPalette
+        isOpen={isPaletteOpen}
+        onClose={() => setIsPaletteOpen(false)}
+        onNavigateTab={(tab) => {
+          onTabChange?.(tab);
+          setIsPaletteOpen(false);
+        }}
+        onPlayFile={onPlayFile}
+        onOpenAddDownload={() => {
+          onTabChange?.("downloads");
+          setIsPaletteOpen(false);
+        }}
+        onToggleTheme={toggleTheme}
+        isDarkTheme={theme === "dark"}
+        user={user}
+        onLogin={login}
+        onLogout={logout}
+      />
     </div>
   );
 }

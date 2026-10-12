@@ -57,8 +57,12 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - [x] **M3.3 Rate limits and per-user caps** for tasks and streams.
 - [x] **M3.4 Deploy** to a VPS or home server with Caddy and TLS; document in README.
 
+## M3b: Design system, motion, and interaction
+- [x] **M3b.1 Command Palette (`Ctrl/Cmd+K`).** Global keyboard shortcut modal to search files, filter tasks, trigger navigation and quick actions.
+- [ ] **M3b.2 Signature animations.** Complete animations from `DESIGN.md` Section 6 (progress bar sheen, animated speed ticker, SVG path checkmark, shared layout transitions).
+- [ ] **M3b.3 PWA and performance pass.** Web App manifest, service worker for offline shell/PWA installability, Lighthouse performance pass.
+
 ## Later phases (break these into small tasks when you reach them)
-- **M3b Design system and motion:** tokens finalised, Storybook, all signature animations from `DESIGN.md` section 6, command palette, PWA, performance pass.
 - **M4 Advanced streaming:** FFmpeg HLS transcoding, subtitles, stream-while-downloading.
 - **M5 Automation:** API tokens, webhooks, RSS, Telegram bot.
 - **M6 Colab Edition:** `colab` profile implementations (`MountedDriveStorage`, `InProcessQueue`, SQLite, single-user auth, `DriveHandoffStreamer`), notebook, `/api/capabilities`, acceptance criteria from PRD section 18.6.
@@ -74,3 +78,4 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - 2026-10-12: implemented POST /api/tasks/{task_id}/retry, TaskCard retry button, and SystemAlerts handling offline, Drive full (0 B free), almost full (>=90%), and Drive disconnected states (M3.2)
 - 2026-10-12: implemented SlidingWindowRateLimiter (10 req/min for tasks, 20 req/min for auth), StreamConcurrencyLimiter (2 distinct files per user with connection pooling), and per-user active task limit (max 3 concurrent active tasks on create and retry) with HTTP 429 Retry-After responses (M3.3)
 - 2026-10-12: implemented production deployment configuration with multi-stage Dockerfile (SPA build + runtime), Caddyfile with automatic TLS and unbuffered streaming (flush_interval -1), docker-compose with Caddy, API, worker, Postgres and Redis, and documented full VPS/home server setup in README (M3.4)
+- 2026-10-12: implemented Command Palette modal with global Ctrl+K / Cmd+K shortcut, header trigger button with ⌘K badge, debounced Google Drive file search, task status filtering, quick actions (tab navigation, add download, theme toggle, sign in/out), and keyboard navigation with arrow keys and Enter (M3b.1)

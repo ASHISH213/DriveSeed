@@ -6,7 +6,14 @@ describe("AppShell", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
-    vi.stubGlobal("fetch", vi.fn());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => ({
+        ok: false,
+        status: 401,
+        json: async () => ({}),
+      } as Response))
+    );
   });
 
   afterEach(() => {
@@ -35,15 +42,21 @@ describe("AppShell", () => {
 
   it("renders user email and logout button when authenticated", async () => {
     // Mock /api/auth/me -> 200 OK with User data
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        id: "550e8400-e29b-41d4-a716-446655440000",
-        email: "testuser@driveseed.io",
-        created_at: "2026-10-11T12:00:00Z",
-      }),
-    } as Response);
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes("/api/auth/me")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: "550e8400-e29b-41d4-a716-446655440000",
+            email: "testuser@driveseed.io",
+            created_at: "2026-10-11T12:00:00Z",
+          }),
+        } as Response;
+      }
+      return { ok: false, status: 404, json: async () => ({}) } as Response;
+    });
 
     render(<AppShell />);
 
@@ -54,11 +67,13 @@ describe("AppShell", () => {
     });
 
     // Logout click
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ status: "ok" }),
-    } as Response);
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes("/api/auth/logout")) {
+        return { ok: true, status: 200, json: async () => ({ status: "ok" }) } as Response;
+      }
+      return { ok: false, status: 401, json: async () => ({}) } as Response;
+    });
 
     fireEvent.click(screen.getByTestId("logout-button"));
 
