@@ -1,7 +1,7 @@
 # 🌱 DriveSeed
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ASHISH213/pyTorrent/master/frontend/public/icon-512.png" alt="DriveSeed Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);" />
+  <img src="https://github.com/ASHISH213/DriveSeed/blob/master/frontend/public/icon-512.svg" alt="DriveSeed Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);" />
 </p>
 
 <p align="center">
