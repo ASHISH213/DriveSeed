@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api.auth import get_current_user
 from app.models.user import User
@@ -11,8 +11,10 @@ from app.schemas.files import (
     FileItemResponse,
     FileListResponse,
     FilePatchRequest,
+    SubtitleListResponse,
 )
 from app.services.library import DriveNotConnectedError, LibraryService
+from app.services.subtitles import SubtitleService
 
 router = APIRouter(prefix="/api/files", tags=["Library"])
 
@@ -118,6 +120,69 @@ async def delete_file(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "file_not_found", "message": f"File {file_id} not found"}},
+        ) from err
+    except DriveNotConnectedError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "drive_not_connected", "message": str(err)}},
+        ) from err
+
+
+def get_subtitle_service() -> SubtitleService:
+    """Dependency provider returning SubtitleService instance."""
+    return SubtitleService()
+
+
+@router.get("/{file_id}/subtitles", response_model=SubtitleListResponse)
+async def list_file_subtitles(
+    file_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+    subtitle_service: Annotated[SubtitleService, Depends(get_subtitle_service)],
+) -> SubtitleListResponse:
+    """List available sidecar subtitle tracks for a media file."""
+    try:
+        return await subtitle_service.list_subtitles(user=current_user, file_id=file_id)
+    except FileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "file_not_found", "message": f"File {file_id} not found"}},
+        ) from err
+    except DriveNotConnectedError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "drive_not_connected", "message": str(err)}},
+        ) from err
+
+
+@router.get("/{file_id}/subtitles/{sub_id}")
+async def get_subtitle_track(
+    file_id: str,
+    sub_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+    subtitle_service: Annotated[SubtitleService, Depends(get_subtitle_service)],
+) -> Response:
+    """Retrieve and serve a subtitle track converted on the fly to WebVTT."""
+    try:
+        vtt_content = await subtitle_service.get_subtitle_content(
+            user=current_user, file_id=file_id, sub_id=sub_id
+        )
+        return Response(
+            content=vtt_content,
+            media_type="text/vtt; charset=utf-8",
+            headers={
+                "Content-Type": "text/vtt; charset=utf-8",
+                "Cache-Control": "private, max-age=3600",
+            },
+        )
+    except FileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "code": "file_not_found",
+                    "message": f"Subtitle file {sub_id} not found",
+                }
+            },
         ) from err
     except DriveNotConnectedError as err:
         raise HTTPException(

@@ -62,8 +62,15 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - [x] **M3b.2 Signature animations.** Complete animations from `DESIGN.md` Section 6 (progress bar sheen, animated speed ticker, SVG path checkmark, shared layout transitions).
 - [x] **M3b.3 PWA and performance pass.** Web App manifest, service worker for offline shell/PWA installability, Lighthouse performance pass.
 
+## M4: Advanced streaming (about 3 weeks)
+- [x] **M4.1 Subtitle support & extraction.** Sidecar `.srt`/`.vtt` auto-detection in Drive, on-the-fly WebVTT conversion, API routes `/api/files/{id}/subtitles`, and frontend PlayerShell track menu with keyboard toggle.
+  *Done when:* a `.srt` or `.vtt` file matching a media item in Drive is listed, converted, and displayed as active subtitles in the player with track selection.
+- [ ] **M4.2 FFmpeg HLS on-demand transcoding engine & API.** On-demand FFmpeg transcoding to HLS for MKV/unsupported codecs (`/hls/{id}/index.m3u8` and segments), concurrency limit, and PlayerShell HLS fallback. Disabled under `PROFILE=colab`.
+  *Done when:* an MKV/unsupported video transcodes on demand to HLS, plays in the browser player, and a test proves `colab` profile disables it with 403.
+- [ ] **M4.3 Stream-while-downloading.** Sequential download mode in `TorrentEngine` prioritizing boundary pieces, streaming active downloads from scratch disk, and "Stream Now" button on downloading tasks.
+  *Done when:* an active torrent video can be streamed in the browser before the task completes downloading.
+
 ## Later phases (break these into small tasks when you reach them)
-- **M4 Advanced streaming:** FFmpeg HLS transcoding, subtitles, stream-while-downloading.
 - **M5 Automation:** API tokens, webhooks, RSS, Telegram bot.
 - **M6 Colab Edition:** `colab` profile implementations (`MountedDriveStorage`, `InProcessQueue`, SQLite, single-user auth, `DriveHandoffStreamer`), notebook, `/api/capabilities`, acceptance criteria from PRD section 18.6.
 
@@ -81,3 +88,5 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - 2026-10-12: implemented Command Palette modal with global Ctrl+K / Cmd+K shortcut, header trigger button with ⌘K badge, debounced Google Drive file search, task status filtering, quick actions (tab navigation, add download, theme toggle, sign in/out), and keyboard navigation with arrow keys and Enter (M3b.1)
 - 2026-10-12: implemented signature animations from DESIGN.md section 6: 45-degree diagonal animated sheen on ProgressBar, cloud-to-drive path indicator on uploading, AnimatedTicker for speed and ETA numbers, self-drawing SVG AnimatedCheckmark, lightweight celebratory ConfettiBurst (≤40 particles, ≤600ms), shared layout morphing across Library grid/list with layoutId, and 8px slide-fade page transitions (M3b.2)
 - 2026-10-12: implemented PWA support and performance pass with manifest.webmanifest (standalone, dark theme #0B0D12, app shortcuts, maskable icons), sw.js service worker (offline shell caching, cache-first hashed assets, network-first navigate fallback, network-only API/SSE bypass), PWA installation listener/helpers, Caddyfile caching headers, and SVG icon suite (M3b.3)
+- 2026-10-12: implemented subtitle support (M4.1) with SubtitleService for sidecar .srt/.vtt auto-detection in Drive folders/subfolders, on-the-fly SubRip to WebVTT conversion with BOM and timestamp parsing, GET /api/files/{id}/subtitles and GET /api/files/{id}/subtitles/{sub_id} endpoints, PlayerShell subtitle track dropdown menu with language badges, HTML5 track rendering with custom ::cue styling, and keyboard shortcut cycling (C)
+

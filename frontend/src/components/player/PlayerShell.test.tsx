@@ -168,4 +168,73 @@ describe("PlayerShell", () => {
       expect(screen.getByText("Subtitles: Enabled")).toBeInTheDocument();
     });
   });
+
+  it("loads subtitle tracks, displays menu, and activates WebVTT track", async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/subtitles")) {
+        return {
+          ok: true,
+          json: async () => ({
+            subtitles: [
+              {
+                id: "sub-1",
+                name: "Movie.en.srt",
+                label: "English",
+                language: "en",
+                format: "srt",
+              },
+              {
+                id: "sub-2",
+                name: "Movie.es.vtt",
+                label: "Spanish",
+                language: "es",
+                format: "vtt",
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          file_id: "vid-subs",
+          position_seconds: 0,
+          updated_at: null,
+        }),
+      } as Response;
+    });
+
+    render(<PlayerShell fileId="vid-subs" fileName="Movie.mp4" />);
+
+    // Click subtitles button to open dropdown menu
+    const subBtn = await waitFor(() => screen.getByTestId("subtitles-btn"));
+    fireEvent.click(subBtn);
+
+    // Verify subtitle menu renders with available tracks
+    expect(await screen.findByTestId("subtitles-menu")).toBeInTheDocument();
+    expect(screen.getByText("English")).toBeInTheDocument();
+    expect(screen.getByText("Spanish")).toBeInTheDocument();
+
+    // Click English track
+    fireEvent.click(screen.getByText("English"));
+
+    // Verify track element was added to video
+    await waitFor(() => {
+      const trackEl = document.querySelector("track");
+      expect(trackEl).toBeInTheDocument();
+      expect(trackEl?.getAttribute("src")).toContain("/api/files/vid-subs/subtitles/sub-1");
+      expect(trackEl?.getAttribute("srclang")).toBe("en");
+      expect(trackEl?.getAttribute("label")).toBe("English");
+    });
+
+    // Test cycling with KeyC to next track (Spanish)
+    fireEvent.keyDown(window, { code: "KeyC" });
+    await waitFor(() => {
+      const trackEl = document.querySelector("track");
+      expect(trackEl?.getAttribute("src")).toContain("/api/files/vid-subs/subtitles/sub-2");
+      expect(trackEl?.getAttribute("label")).toBe("Spanish");
+    });
+  });
 });
+

@@ -47,3 +47,19 @@ class CreateFolderRequest(BaseModel):
         default=None,
         description="Target parent folder ID. Defaults to user root folder if omitted.",
     )
+
+
+class SubtitleTrackResponse(BaseModel):
+    """Subtitle track metadata for media playback."""
+
+    id: str
+    name: str
+    label: str
+    language: str
+    format: str
+
+
+class SubtitleListResponse(BaseModel):
+    """List of available subtitle tracks for a media file."""
+
+    subtitles: list[SubtitleTrackResponse] = Field(default_factory=list)

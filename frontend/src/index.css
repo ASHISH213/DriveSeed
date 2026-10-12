@@ -37,3 +37,15 @@
   -webkit-backdrop-filter: var(--blur);
   border-bottom: 1px solid var(--border);
 }
+
+video::cue {
+  background-color: rgba(11, 13, 18, 0.85);
+  color: #ffffff;
+  font-family: var(--font-ui), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+

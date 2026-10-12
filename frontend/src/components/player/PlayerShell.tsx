@@ -14,10 +14,19 @@ import {
   Gauge,
   Loader2,
   AlertCircle,
+  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatTime } from "@/lib/format";
 import { usePlayback } from "@/hooks/usePlayback";
+
+export interface SubtitleTrack {
+  id: string;
+  name: string;
+  label: string;
+  language: string;
+  format: string;
+}
 
 export interface PlayerShellProps {
   fileId: string;
@@ -56,6 +65,9 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [captionsActive, setCaptionsActive] = useState(false);
+  const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
+  const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
+  const [showSubtitlesMenu, setShowSubtitlesMenu] = useState(false);
 
   // UX & Animation state
   const [showControls, setShowControls] = useState(true);
@@ -93,6 +105,7 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
       idleTimerRef.current = window.setTimeout(() => {
         setShowControls(false);
         setShowSpeedMenu(false);
+        setShowSubtitlesMenu(false);
       }, 2500);
     }
   }, [isPlaying]);
@@ -117,6 +130,74 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
       setResumePrompt({ position: playbackInfo.position_seconds });
     }
   }, [playbackInfo]);
+
+  // Fetch available subtitle tracks
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSubtitles = async () => {
+      try {
+        const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/subtitles`);
+        if (res.ok) {
+          const data = (await res.json()) as { subtitles?: SubtitleTrack[] };
+          if (isMounted && data.subtitles && data.subtitles.length > 0) {
+            setSubtitleTracks(data.subtitles);
+          }
+        }
+      } catch {
+        // Fallback / offline mode
+      }
+    };
+    void fetchSubtitles();
+    return () => {
+      isMounted = false;
+    };
+  }, [fileId]);
+
+  // Subtitle selection & cycling handlers
+  const toggleOrCycleSubtitles = useCallback(() => {
+    if (subtitleTracks.length > 0) {
+      const currentIndex = activeTrackId
+        ? subtitleTracks.findIndex((t) => t.id === activeTrackId)
+        : -1;
+      if (currentIndex === -1) {
+        const next = subtitleTracks[0];
+        setActiveTrackId(next.id);
+        setCaptionsActive(true);
+        showToast(`Subtitles: ${next.label}`);
+      } else if (currentIndex === subtitleTracks.length - 1) {
+        setActiveTrackId(null);
+        setCaptionsActive(false);
+        showToast("Subtitles: Off");
+      } else {
+        const next = subtitleTracks[currentIndex + 1];
+        setActiveTrackId(next.id);
+        setCaptionsActive(true);
+        showToast(`Subtitles: ${next.label}`);
+      }
+    } else {
+      setCaptionsActive((prev) => {
+        const next = !prev;
+        showToast(next ? "Subtitles: Enabled" : "Subtitles: Off");
+        return next;
+      });
+    }
+  }, [activeTrackId, subtitleTracks, showToast]);
+
+  const handleSelectTrack = useCallback(
+    (trackId: string | null) => {
+      setActiveTrackId(trackId);
+      setShowSubtitlesMenu(false);
+      if (trackId === null) {
+        setCaptionsActive(false);
+        showToast("Subtitles: Off");
+      } else {
+        setCaptionsActive(true);
+        const track = subtitleTracks.find((t) => t.id === trackId);
+        showToast(`Subtitles: ${track?.label || "Enabled"}`);
+      }
+    },
+    [subtitleTracks, showToast]
+  );
 
   // Video event listeners
   const handleLoadedMetadata = () => {
@@ -391,11 +472,7 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
           break;
         case "KeyC":
           e.preventDefault();
-          setCaptionsActive((prev) => {
-            const next = !prev;
-            showToast(next ? "Subtitles: Enabled" : "Subtitles: Off");
-            return next;
-          });
+          toggleOrCycleSubtitles();
           break;
         case "Escape":
           if (!document.fullscreenElement && onClose) {
@@ -419,6 +496,7 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
     onClose,
     resetIdleTimer,
     showToast,
+    toggleOrCycleSubtitles,
   ]);
 
   const streamSrc = `/stream/${encodeURIComponent(fileId)}`;
@@ -445,6 +523,7 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
           src={streamSrc}
           className="max-w-full max-h-full object-contain"
           playsInline
+          crossOrigin="anonymous"
           onLoadedMetadata={handleLoadedMetadata}
           onTimeUpdate={handleTimeUpdate}
           onPlay={handlePlay}
@@ -453,7 +532,22 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
           onWaiting={handleWaiting}
           onPlaying={handlePlaying}
           onError={handleError}
-        />
+        >
+          {activeTrackId && (
+            <track
+              key={activeTrackId}
+              kind="subtitles"
+              src={`/api/files/${encodeURIComponent(fileId)}/subtitles/${encodeURIComponent(activeTrackId)}`}
+              srcLang={
+                subtitleTracks.find((t) => t.id === activeTrackId)?.language || "en"
+              }
+              label={
+                subtitleTracks.find((t) => t.id === activeTrackId)?.label || "Subtitles"
+              }
+              default
+            />
+          )}
+        </video>
 
         {/* Double-tap / click skip ripple feedback */}
         <AnimatePresence>
@@ -846,26 +940,85 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
                   )}
                 </div>
 
-                {/* Subtitles toggle */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCaptionsActive((prev) => {
-                      const next = !prev;
-                      showToast(next ? "Subtitles: Enabled" : "Subtitles: Off");
-                      return next;
-                    })
-                  }
-                  className={`p-2 rounded-lg transition-colors ${
-                    captionsActive
-                      ? "text-accent-2 bg-accent-2/10"
-                      : "text-text-muted hover:text-white hover:bg-surface/80"
-                  }`}
-                  title="Toggle Subtitles (C)"
-                  aria-label="Toggle Subtitles"
-                >
-                  <Subtitles className="w-4 h-4" />
-                </button>
+                {/* Subtitles control & dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (subtitleTracks.length > 0) {
+                        setShowSubtitlesMenu((prev) => !prev);
+                        setShowSpeedMenu(false);
+                      } else {
+                        toggleOrCycleSubtitles();
+                      }
+                    }}
+                    className={`p-2 rounded-lg transition-colors ${
+                      captionsActive || activeTrackId !== null
+                        ? "text-accent-2 bg-accent-2/10"
+                        : "text-text-muted hover:text-white hover:bg-surface/80"
+                    }`}
+                    title={
+                      subtitleTracks.length > 0
+                        ? `Subtitles (${subtitleTracks.length} available) (C)`
+                        : "Toggle Subtitles (C)"
+                    }
+                    aria-label="Toggle Subtitles"
+                    data-testid="subtitles-btn"
+                  >
+                    <Subtitles className="w-4 h-4" />
+                  </button>
+
+                  {/* Subtitles dropdown menu */}
+                  {showSubtitlesMenu && (
+                    <div
+                      className="absolute bottom-full right-0 mb-2 p-1.5 rounded-xl bg-bg-elevated/95 backdrop-blur-xl border border-border shadow-2 flex flex-col gap-0.5 min-w-[190px] z-50 player-controls"
+                      data-testid="subtitles-menu"
+                    >
+                      <div className="px-2.5 py-1 text-[10px] font-semibold tracking-wider uppercase text-text-muted border-b border-border/50 mb-1 flex items-center justify-between">
+                        <span>Subtitles</span>
+                        <span className="font-mono text-accent-2">
+                          {subtitleTracks.length} available
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTrack(null)}
+                        className={`px-2.5 py-1.5 text-xs text-left rounded-lg transition-colors flex items-center justify-between ${
+                          activeTrackId === null
+                            ? "bg-accent-2/20 text-accent-2 font-semibold"
+                            : "text-text hover:bg-surface"
+                        }`}
+                      >
+                        <span>Off</span>
+                        {activeTrackId === null && (
+                          <Check className="w-3.5 h-3.5 text-accent-2" />
+                        )}
+                      </button>
+                      {subtitleTracks.map((track) => (
+                        <button
+                          key={track.id}
+                          type="button"
+                          onClick={() => handleSelectTrack(track.id)}
+                          className={`px-2.5 py-1.5 text-xs text-left rounded-lg transition-colors flex items-center justify-between ${
+                            activeTrackId === track.id
+                              ? "bg-accent-2/20 text-accent-2 font-semibold"
+                              : "text-text hover:bg-surface"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 truncate pr-2">
+                            <span className="truncate">{track.label}</span>
+                            <span className="text-[10px] uppercase font-mono px-1 py-0.5 rounded bg-surface border border-border text-text-muted">
+                              {track.language}
+                            </span>
+                          </div>
+                          {activeTrackId === track.id && (
+                            <Check className="w-3.5 h-3.5 text-accent-2 shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Fullscreen Button */}
                 <button
