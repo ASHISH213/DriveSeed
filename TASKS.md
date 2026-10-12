@@ -75,7 +75,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
   *Done when:* a user can generate a token in the UI, use it to call `/api/tasks` and `/api/files` via curl with `Authorization: Bearer ds_...`, and revoke it.
 - [x] **M5.2 Webhooks on task lifecycle.** Webhook endpoint registration, HMAC-SHA256 signature header (`X-DriveSeed-Signature`), automatic payload dispatching on task completion/failure with retry logic.
   *Done when:* task completions deliver signed webhook payloads to a registered endpoint.
-- [ ] **M5.3 RSS auto-downloader.** Scheduled feed fetching, title/category regex filtering, deduplication, automatic download task creation and start.
+- [x] **M5.3 RSS auto-downloader.** Scheduled feed fetching, title/category regex filtering, deduplication, automatic download task creation and start.
   *Done when:* an RSS feed with a regex match auto-triggers a new download task.
 - [ ] **M5.4 Telegram bot integration.** Bot service (`/start`, `/add <magnet|url>`, `/status`, `/library`) and completion notifications.
   *Done when:* sending a magnet link to the Telegram bot starts a task and notifies on completion.
@@ -102,6 +102,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - 2026-10-12: implemented stream-while-downloading (M4.3) with TorrentEngine sequential piece downloading and priority 7 boundary piece allocation (pieces 0, 1, last), GET /stream/task/{id} scratch disk range streaming endpoint with 206 Partial Content, buffer pre-flight guards (425 Too Early), Colab profile guard (403), PlayerModal/PlayerShell task support, and TaskCard "Stream Now" button on active downloading tasks
 - 2026-10-12: implemented personal API tokens & authentication (M5.1) with cryptographically secure token format (`ds_...`), SHA-256 hash storage at rest in `api_tokens` table, migration `20261012_04`, dual-auth support in `get_current_user`/`get_optional_user` for Bearer `ds_...` headers, POST/GET/DELETE `/api/tokens` endpoints, `useTokens` hook, `ApiTokensCard` UI with one-time reveal modal, copy-to-clipboard, active token table with prefix/label/created/last-used, revoke action, `Settings` page, `AppShell` nav tab, and Command Palette integration
 - 2026-10-12: implemented webhooks on task lifecycle (M5.2) with WebhookEndpoint model, migration `20261012_05`, HMAC-SHA256 signature headers (`X-DriveSeed-Signature: sha256=...`), automatic dispatch in pipeline worker on task.completed and task.failed with retry logic on transient errors, POST/GET/DELETE `/api/webhooks` and POST `/api/webhooks/{id}/test` ping endpoints, SSRF protection, useWebhooks hook, and WebhooksCard UI in Settings page
+- 2026-10-12: implemented RSS auto-downloader (M5.3) with RssSubscription and RssFeedItem models, migration `20261012_06`, RSS 2.0 (enclosures & magnets) and Atom XML parser, SSRF validation, Python `re` regex filtering, robust deduplication against seen GUIDs and active task source URIs, auto task creation via `TaskService.create_task`, REST API (`POST /api/rss`, `GET /api/rss`, `POST /api/rss/preview`, `POST /api/rss/{id}/sync`, `DELETE /api/rss/{id}`), `useRss` hook, and `RssFeedsCard` UI with live feed preview and manual sync trigger in Settings page
 
 
 

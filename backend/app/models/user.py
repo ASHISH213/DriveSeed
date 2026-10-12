@@ -11,6 +11,7 @@ from app.models.base import Base
 
 if TYPE_CHECKING:
     from app.models.api_token import ApiToken
+    from app.models.rss import RssSubscription
     from app.models.task import Task
     from app.models.webhook import WebhookEndpoint
 
@@ -63,6 +64,11 @@ class User(Base):
     )
     webhook_endpoints: Mapped[list["WebhookEndpoint"]] = relationship(
         "WebhookEndpoint",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    rss_subscriptions: Mapped[list["RssSubscription"]] = relationship(
+        "RssSubscription",
         back_populates="user",
         cascade="all, delete-orphan",
     )

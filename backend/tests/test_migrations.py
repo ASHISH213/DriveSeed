@@ -26,6 +26,7 @@ def test_migration_scripts_exist() -> None:
     assert "20261012_03" in revisions_ids
     assert "20261012_04" in revisions_ids
     assert "20261012_05" in revisions_ids
+    assert "20261012_06" in revisions_ids
 
 
 def test_migration_sql_generation_offline(capsys: pytest.CaptureFixture[str]) -> None:
@@ -45,5 +46,7 @@ def test_migration_sql_generation_offline(capsys: pytest.CaptureFixture[str]) ->
     assert "CREATE TABLE task_files" in sql_text
     assert "CREATE TABLE api_tokens" in sql_text
     assert "CREATE TABLE webhook_endpoints" in sql_text
+    assert "CREATE TABLE rss_subscriptions" in sql_text
+    assert "CREATE TABLE rss_feed_items" in sql_text
     assert "FOREIGN KEY(user_id) REFERENCES users (id)" in sql_text
     assert "FOREIGN KEY(task_id) REFERENCES tasks (id)" in sql_text

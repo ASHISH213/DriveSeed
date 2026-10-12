@@ -6,6 +6,7 @@ from typing import Any
 
 from app.models.api_token import ApiToken
 from app.models.playback import Playback
+from app.models.rss import RssFeedItem, RssSubscription
 from app.models.task import Task
 from app.models.task_file import TaskFile
 from app.models.user import User
@@ -50,6 +51,8 @@ class FakeAsyncSession:
         self.playbacks: dict[tuple[uuid.UUID, str], Any] = {}
         self.api_tokens: dict[uuid.UUID, ApiToken] = {}
         self.webhook_endpoints: dict[uuid.UUID, WebhookEndpoint] = {}
+        self.rss_subscriptions: dict[uuid.UUID, RssSubscription] = {}
+        self.rss_feed_items: dict[uuid.UUID, RssFeedItem] = {}
         self.added: list[Any] = []
 
     def add(self, instance: Any) -> None:
@@ -87,6 +90,18 @@ class FakeAsyncSession:
             if getattr(instance, "created_at", None) is None:
                 instance.created_at = datetime.now(UTC)
             self.webhook_endpoints[instance.id] = instance
+        elif isinstance(instance, RssSubscription):
+            if instance.id is None:
+                instance.id = uuid.uuid4()
+            if getattr(instance, "created_at", None) is None:
+                instance.created_at = datetime.now(UTC)
+            self.rss_subscriptions[instance.id] = instance
+        elif isinstance(instance, RssFeedItem):
+            if instance.id is None:
+                instance.id = uuid.uuid4()
+            if getattr(instance, "created_at", None) is None:
+                instance.created_at = datetime.now(UTC)
+            self.rss_feed_items[instance.id] = instance
         else:
             # Playback or generic
             user_id = getattr(instance, "user_id", None)
@@ -101,6 +116,10 @@ class FakeAsyncSession:
             self.api_tokens.pop(instance.id, None)
         if isinstance(instance, WebhookEndpoint):
             self.webhook_endpoints.pop(instance.id, None)
+        if isinstance(instance, RssSubscription):
+            self.rss_subscriptions.pop(instance.id, None)
+        if isinstance(instance, RssFeedItem):
+            self.rss_feed_items.pop(instance.id, None)
         user_id = getattr(instance, "user_id", None)
         file_id = getattr(instance, "file_id", None)
         if user_id is not None and file_id is not None:
@@ -131,7 +150,6 @@ class FakeAsyncSession:
                     if id_match or sub_match or email_match:
                         matching.append(u)
             elif entity is Task:
-                # Find task id and user id from params
                 param_ids = [v for k, v in params.items() if "id" in k and isinstance(v, uuid.UUID)]
                 param_user_ids = [
                     v for k, v in params.items() if "user_id" in k and isinstance(v, uuid.UUID)
@@ -139,15 +157,12 @@ class FakeAsyncSession:
 
                 task_list = list(self.tasks.values())
                 for t in task_list:
-                    # If user_id is in params, must match
                     if param_user_ids and t.user_id not in param_user_ids:
                         continue
-                    # If specific task id is in params, must match
                     if param_ids:
                         task_id_matches = [pid for pid in param_ids if pid not in param_user_ids]
                         if task_id_matches and t.id not in task_id_matches:
                             continue
-                    # Ensure files attribute is initialized
                     if not hasattr(t, "files") or t.__dict__.get("files") is None:
                         t.files = []
                     matching.append(t)
@@ -212,6 +227,47 @@ class FakeAsyncSession:
                 matching.sort(
                     key=lambda x: x.created_at or datetime.min.replace(tzinfo=UTC), reverse=True
                 )
+            elif entity is RssSubscription:
+                user_id_param = next(
+                    (v for k, v in params.items() if "user_id" in k and isinstance(v, uuid.UUID)),
+                    None,
+                )
+                id_param = next(
+                    (
+                        v
+                        for k, v in params.items()
+                        if "id" in k and "user_id" not in k and isinstance(v, uuid.UUID)
+                    ),
+                    None,
+                )
+                for sub in self.rss_subscriptions.values():
+                    if user_id_param and sub.user_id != user_id_param:
+                        continue
+                    if id_param and sub.id != id_param:
+                        continue
+                    matching.append(sub)
+                matching.sort(
+                    key=lambda x: x.created_at or datetime.min.replace(tzinfo=UTC), reverse=True
+                )
+            elif entity is RssFeedItem:
+                sub_id_param = next(
+                    (
+                        v
+                        for k, v in params.items()
+                        if "subscription_id" in k and isinstance(v, uuid.UUID)
+                    ),
+                    None,
+                )
+                guid_param = next(
+                    (v for k, v in params.items() if "guid" in k and isinstance(v, str)),
+                    None,
+                )
+                for item in self.rss_feed_items.values():
+                    if sub_id_param and item.subscription_id != sub_id_param:
+                        continue
+                    if guid_param and item.guid != guid_param:
+                        continue
+                    matching.append(item)
             else:
                 # Fallback matching for backward compatibility
                 for u in self.users.values():
@@ -236,4 +292,8 @@ class FakeAsyncSession:
             return self.api_tokens.get(ident)
         if entity_class is WebhookEndpoint and isinstance(ident, uuid.UUID):
             return self.webhook_endpoints.get(ident)
+        if entity_class is RssSubscription and isinstance(ident, uuid.UUID):
+            return self.rss_subscriptions.get(ident)
+        if entity_class is RssFeedItem and isinstance(ident, uuid.UUID):
+            return self.rss_feed_items.get(ident)
         return None

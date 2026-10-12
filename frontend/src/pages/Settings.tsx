@@ -2,6 +2,7 @@ import React from "react";
 import { Sliders, LogIn, AlertCircle } from "lucide-react";
 import { ApiTokensCard } from "@/components/settings/ApiTokensCard";
 import { WebhooksCard } from "@/components/settings/WebhooksCard";
+import { RssFeedsCard } from "@/components/settings/RssFeedsCard";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Settings: React.FC = () => {
@@ -53,6 +54,7 @@ export const Settings: React.FC = () => {
 
       <ApiTokensCard />
       <WebhooksCard />
+      <RssFeedsCard />
     </div>
   );
 };

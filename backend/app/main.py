@@ -13,6 +13,7 @@ from app.api.auth import router as auth_router
 from app.api.events import router as events_router
 from app.api.files import router as files_router
 from app.api.playback import router as playback_router
+from app.api.rss import router as rss_router
 from app.api.storage import router as storage_router
 from app.api.stream import router as stream_router
 from app.api.tasks import router as tasks_router
@@ -44,6 +45,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         debug=app_settings.DEBUG,
         lifespan=lifespan,
     )
+
+    if settings is not None:
+        app.dependency_overrides[get_settings] = lambda: app_settings
 
     if app_settings.CORS_ORIGINS:
         app.add_middleware(
@@ -81,6 +85,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(stream_router)
     app.include_router(tokens_router)
     app.include_router(webhooks_router)
+    app.include_router(rss_router)
 
     dist_dir = (
         Path(app_settings.FRONTEND_DIST_DIR).resolve()
