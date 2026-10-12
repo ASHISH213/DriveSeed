@@ -65,7 +65,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 ## M4: Advanced streaming (about 3 weeks)
 - [x] **M4.1 Subtitle support & extraction.** Sidecar `.srt`/`.vtt` auto-detection in Drive, on-the-fly WebVTT conversion, API routes `/api/files/{id}/subtitles`, and frontend PlayerShell track menu with keyboard toggle.
   *Done when:* a `.srt` or `.vtt` file matching a media item in Drive is listed, converted, and displayed as active subtitles in the player with track selection.
-- [ ] **M4.2 FFmpeg HLS on-demand transcoding engine & API.** On-demand FFmpeg transcoding to HLS for MKV/unsupported codecs (`/hls/{id}/index.m3u8` and segments), concurrency limit, and PlayerShell HLS fallback. Disabled under `PROFILE=colab`.
+- [x] **M4.2 FFmpeg HLS on-demand transcoding engine & API.** On-demand FFmpeg transcoding to HLS for MKV/unsupported codecs (`/hls/{id}/index.m3u8` and segments), concurrency limit, and PlayerShell HLS fallback. Disabled under `PROFILE=colab`.
   *Done when:* an MKV/unsupported video transcodes on demand to HLS, plays in the browser player, and a test proves `colab` profile disables it with 403.
 - [ ] **M4.3 Stream-while-downloading.** Sequential download mode in `TorrentEngine` prioritizing boundary pieces, streaming active downloads from scratch disk, and "Stream Now" button on downloading tasks.
   *Done when:* an active torrent video can be streamed in the browser before the task completes downloading.
@@ -89,4 +89,6 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - 2026-10-12: implemented signature animations from DESIGN.md section 6: 45-degree diagonal animated sheen on ProgressBar, cloud-to-drive path indicator on uploading, AnimatedTicker for speed and ETA numbers, self-drawing SVG AnimatedCheckmark, lightweight celebratory ConfettiBurst (≤40 particles, ≤600ms), shared layout morphing across Library grid/list with layoutId, and 8px slide-fade page transitions (M3b.2)
 - 2026-10-12: implemented PWA support and performance pass with manifest.webmanifest (standalone, dark theme #0B0D12, app shortcuts, maskable icons), sw.js service worker (offline shell caching, cache-first hashed assets, network-first navigate fallback, network-only API/SSE bypass), PWA installation listener/helpers, Caddyfile caching headers, and SVG icon suite (M3b.3)
 - 2026-10-12: implemented subtitle support (M4.1) with SubtitleService for sidecar .srt/.vtt auto-detection in Drive folders/subfolders, on-the-fly SubRip to WebVTT conversion with BOM and timestamp parsing, GET /api/files/{id}/subtitles and GET /api/files/{id}/subtitles/{sub_id} endpoints, PlayerShell subtitle track dropdown menu with language badges, HTML5 track rendering with custom ::cue styling, and keyboard shortcut cycling (C)
+- 2026-10-12: implemented FFmpeg HLS on-demand transcoding (M4.2) with HlsTranscodeService, GET /hls/{id}/index.m3u8 and /hls/{id}/{segment} routes, MAX_CONCURRENT_TRANSCODES concurrency limiter (HTTP 429), PROFILE=colab refusal (HTTP 403), PlayerShell hls.js integration with animated HLS badge, auto-fallback on direct play errors, and manual HLS/Direct toggle
+
 

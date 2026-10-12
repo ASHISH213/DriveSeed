@@ -236,5 +236,28 @@ describe("PlayerShell", () => {
       expect(trackEl?.getAttribute("label")).toBe("Spanish");
     });
   });
+
+  it("automatically activates HLS mode and badge for MKV media files", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        file_id: "mkv-vid",
+        position_seconds: 0,
+        updated_at: null,
+      }),
+    } as Response);
+
+    render(<PlayerShell fileId="mkv-vid" fileName="SampleMovie.mkv" />);
+
+    // Since file is .mkv, HLS badge is rendered
+    expect(screen.getByTestId("hls-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("stream-mode-toggle")).toHaveTextContent("HLS");
+
+    // Toggle to Direct mode
+    fireEvent.click(screen.getByTestId("stream-mode-toggle"));
+    expect(screen.queryByTestId("hls-badge")).not.toBeInTheDocument();
+    expect(screen.getByTestId("stream-mode-toggle")).toHaveTextContent("Direct");
+  });
 });
+
 

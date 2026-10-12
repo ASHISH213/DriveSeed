@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     # Rate Limits & Per-User Concurrency Caps
     MAX_ACTIVE_TASKS_PER_USER: int = 3
     MAX_CONCURRENT_STREAMS_PER_USER: int = 2
+    MAX_CONCURRENT_TRANSCODES: int = 2
+    HLS_SEGMENT_DURATION_SECONDS: int = 4
     RATE_LIMIT_TASKS_PER_MINUTE: int = 10
     RATE_LIMIT_AUTH_PER_MINUTE: int = 20
 

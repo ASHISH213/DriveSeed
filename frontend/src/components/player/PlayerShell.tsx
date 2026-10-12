@@ -17,6 +17,7 @@ import {
   Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Hls from "hls.js";
 import { formatTime } from "@/lib/format";
 import { usePlayback } from "@/hooks/usePlayback";
 
@@ -68,6 +69,11 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
   const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
   const [showSubtitlesMenu, setShowSubtitlesMenu] = useState(false);
+
+  // HLS transcoding state
+  const isHlsCandidate = /\.(mkv|avi|flv|wmv|ts|mov)$/i.test(fileName);
+  const [isHlsMode, setIsHlsMode] = useState(isHlsCandidate);
+  const hlsRef = useRef<Hls | null>(null);
 
   // UX & Animation state
   const [showControls, setShowControls] = useState(true);
@@ -199,6 +205,51 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
     [subtitleTracks, showToast]
   );
 
+  // HLS or Direct Range source attachment
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isHlsMode) {
+      const hlsSrc = `/hls/${encodeURIComponent(fileId)}/index.m3u8`;
+      if (Hls.isSupported()) {
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+        }
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+        });
+        hlsRef.current = hls;
+        hls.loadSource(hlsSrc);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setPlayerError(null);
+        });
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            setPlayerError("HLS stream encountered an unrecoverable error.");
+            hls.destroy();
+          }
+        });
+        return () => {
+          hls.destroy();
+          hlsRef.current = null;
+        };
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = hlsSrc;
+      } else {
+        video.src = hlsSrc;
+      }
+    } else {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+      video.src = `/stream/${encodeURIComponent(fileId)}`;
+    }
+  }, [fileId, isHlsMode]);
+
   // Video event listeners
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
@@ -250,17 +301,22 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
 
   const handleError = async () => {
     setIsBuffering(false);
+    // Seamless fallback to HLS transcoding if direct Range streaming failed
+    if (!isHlsMode) {
+      showToast("Media requires transcoding: switching to HLS...");
+      setIsHlsMode(true);
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/stream/${fileId}`, {
-        headers: { Range: "bytes=0-0" },
-      });
+      const res = await fetch(`/hls/${encodeURIComponent(fileId)}/index.m3u8`);
       if (res.status === 429) {
         const body = (await res.json().catch(() => null)) as
           | { error?: { message?: string } }
           | null;
         setPlayerError(
           body?.error?.message ||
-            "Maximum concurrent stream limit reached. Please pause or close another active stream."
+            "Maximum concurrent transcode limit reached. Please wait a moment."
         );
         return;
       }
@@ -499,8 +555,8 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
     toggleOrCycleSubtitles,
   ]);
 
-  const streamSrc = `/stream/${encodeURIComponent(fileId)}`;
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+
 
   return (
     <div
@@ -520,7 +576,6 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
       >
         <video
           ref={videoRef}
-          src={streamSrc}
           className="max-w-full max-h-full object-contain"
           playsInline
           crossOrigin="anonymous"
@@ -760,9 +815,40 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
               <h2 className="text-sm font-semibold text-white truncate max-w-md">
                 {fileName}
               </h2>
+              {isHlsMode && (
+                <span
+                  className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-accent-1/20 border border-accent-1/40 text-accent-1 flex items-center gap-1 shadow-glow"
+                  data-testid="hls-badge"
+                  title="On-demand FFmpeg HLS transcoding active"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent-1 animate-pulse" />
+                  HLS
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isHlsMode;
+                  setIsHlsMode(next);
+                  showToast(next ? "Switched to HLS transcoding" : "Switched to Direct Play");
+                }}
+                className={`px-2 py-1 rounded-lg text-xs font-mono border backdrop-blur-md transition-colors ${
+                  isHlsMode
+                    ? "bg-accent-1/10 border-accent-1/40 text-accent-1 font-semibold"
+                    : "bg-surface/80 border-white/10 text-text-muted hover:text-white"
+                }`}
+                title={
+                  isHlsMode
+                    ? "Active: HLS Transcoding (click for Direct)"
+                    : "Active: Direct Play (click for HLS Transcode)"
+                }
+                data-testid="stream-mode-toggle"
+              >
+                {isHlsMode ? "HLS" : "Direct"}
+              </button>
               <button
                 type="button"
                 onClick={() => setShowShortcutsHelp(true)}
