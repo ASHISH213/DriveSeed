@@ -232,6 +232,21 @@ class TaskService:
         await self._emit_event(task)
         return task
 
+    async def retry_task(
+        self,
+        db: AsyncSession,
+        user: User,
+        task_id: uuid.UUID,
+    ) -> Task:
+        """Retry a failed task by clearing error and transitioning back to QUEUED."""
+        task = await self.get_task(db, user, task_id)
+        TaskStateMachine.transition(task, TaskState.QUEUED)
+        task.error = None
+        await db.commit()
+        await db.refresh(task)
+        await self._emit_event(task)
+        return task
+
     async def start_task(
         self,
         db: AsyncSession,

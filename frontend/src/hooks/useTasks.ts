@@ -146,6 +146,19 @@ export function useTasks(userLoggedIn: boolean = true) {
     );
   };
 
+  const retryTask = async (taskId: string) => {
+    setError(null);
+    const res = await fetch(`/api/tasks/${taskId}/retry`, { method: "POST" });
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      const msg = errBody?.detail?.error?.message || errBody?.detail || "Failed to retry task";
+      throw new Error(msg);
+    }
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, state: "queued", error: null } : t))
+    );
+  };
+
   return {
     tasks,
     isLoading,
@@ -157,5 +170,6 @@ export function useTasks(userLoggedIn: boolean = true) {
     pauseTask,
     resumeTask,
     cancelTask,
+    retryTask,
   };
 }

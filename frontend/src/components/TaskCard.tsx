@@ -11,6 +11,7 @@ import {
   Clock,
   Loader2,
   FolderDown,
+  RotateCcw,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Task } from "@/types/task";
@@ -22,11 +23,12 @@ interface TaskCardProps {
   onPause?: (taskId: string) => Promise<unknown>;
   onResume?: (taskId: string) => Promise<unknown>;
   onCancel?: (taskId: string) => Promise<unknown>;
+  onRetry?: (taskId: string) => Promise<unknown>;
   onSelectFiles?: (task: Task) => void;
 }
 
 export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
-  ({ task, onPause, onResume, onCancel, onSelectFiles }, ref) => {
+  ({ task, onPause, onResume, onCancel, onRetry, onSelectFiles }, ref) => {
     const [isActing, setIsActing] = useState(false);
     const { cardHover } = useMotionPreset();
 
@@ -219,6 +221,23 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
                 <X className="w-4 h-4" />
               </button>
             )}
+
+            {task.state === "failed" && onRetry && (
+              <button
+                type="button"
+                onClick={() => handleAction(() => onRetry!(task.id))}
+                disabled={isActing}
+                className="p-1.5 rounded-md hover:bg-surface text-text-muted hover:text-accent-1 transition-colors"
+                title="Retry task"
+                aria-label="Retry task"
+              >
+                {isActing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -233,11 +252,33 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
         etaSeconds={task.eta_seconds}
       />
 
-      {/* Failure Error Display */}
-      {task.state === "failed" && task.error && (
-        <div className="p-2.5 rounded-lg bg-danger/10 border border-danger/30 text-xs text-danger flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span className="truncate">{task.error}</span>
+      {/* Failure Error Display with Retry Action */}
+      {task.state === "failed" && (
+        <div
+          data-testid="task-error-banner"
+          className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-xs text-danger flex items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">{task.error || "Download task failed"}</span>
+          </div>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={() => handleAction(() => onRetry!(task.id))}
+              disabled={isActing}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-danger/20 hover:bg-danger/30 text-danger font-medium transition-colors flex-shrink-0"
+              title="Retry failed task"
+              aria-label="Retry task button"
+            >
+              {isActing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RotateCcw className="w-3.5 h-3.5" />
+              )}
+              <span>Retry</span>
+            </button>
+          )}
         </div>
       )}
     </motion.div>

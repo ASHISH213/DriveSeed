@@ -109,9 +109,13 @@ def test_forbidden_transitions(sample_task: Task) -> None:
             with pytest.raises(InvalidStateTransitionError):
                 TaskStateMachine.transition(sample_task, target)
 
-    # Terminal state failed cannot transition anywhere
+    # Failed state can only transition to QUEUED (retry), all others raise
+    sample_task.state = TaskState.FAILED.value
+    TaskStateMachine.transition(sample_task, TaskState.QUEUED)
+    assert sample_task.state == TaskState.QUEUED.value
+
     sample_task.state = TaskState.FAILED.value
     for target in TaskState:
-        if target != TaskState.FAILED:
+        if target not in (TaskState.FAILED, TaskState.QUEUED):
             with pytest.raises(InvalidStateTransitionError):
                 TaskStateMachine.transition(sample_task, target)

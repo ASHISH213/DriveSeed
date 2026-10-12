@@ -387,3 +387,53 @@ async def test_task_start_insufficient_storage_rejected(
         )
         assert res.status_code == 400
         assert res.json()["detail"]["error"]["code"] == "insufficient_storage"
+
+
+@pytest.mark.asyncio
+async def test_task_retry_lifecycle(
+    app_with_db,
+    fake_db: FakeAsyncSession,
+    test_user: User,
+    auth_headers_and_cookies: dict[str, str],
+) -> None:
+    """Verify retrying a failed task resets error and transitions to queued."""
+    failed_task = Task(
+        user_id=test_user.id,
+        source_type="magnet",
+        source_uri="magnet:?xt=urn:btih:retrytest",
+        name="failed-torrent.iso",
+        state="failed",
+        error="Drive quota exceeded during upload",
+    )
+    fake_db.add(failed_task)
+
+    active_task = Task(
+        user_id=test_user.id,
+        source_type="url",
+        source_uri="https://example.com/file.iso",
+        name="file.iso",
+        state="downloading",
+    )
+    fake_db.add(active_task)
+
+    transport = ASGITransport(app=app_with_db)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=auth_headers_and_cookies
+    ) as client:
+        # 1. Retrying failed task succeeds and resets state to queued
+        retry_resp = await client.post(f"/api/tasks/{failed_task.id}/retry")
+        assert retry_resp.status_code == 200
+        assert retry_resp.json()["state"] == "queued"
+        assert failed_task.state == "queued"
+        assert failed_task.error is None
+
+        # 2. Retrying an active task fails with 400 invalid_transition
+        active_retry_resp = await client.post(f"/api/tasks/{active_task.id}/retry")
+        assert active_retry_resp.status_code == 400
+        assert active_retry_resp.json()["detail"]["error"]["code"] == "invalid_transition"
+
+        # 3. Retrying non-existent task returns 404
+        random_id = uuid.uuid4()
+        not_found_resp = await client.post(f"/api/tasks/{random_id}/retry")
+        assert not_found_resp.status_code == 404
+        assert not_found_resp.json()["detail"]["error"]["code"] == "not_found"

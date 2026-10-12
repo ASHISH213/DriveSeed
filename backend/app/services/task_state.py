@@ -69,9 +69,9 @@ class TaskStateMachine:
             TaskState.CANCELLED,
             TaskState.FAILED,
         },
-        # Terminal states have no allowable outbound transitions
+        # Terminal / final states
         TaskState.COMPLETED: set(),
-        TaskState.FAILED: set(),
+        TaskState.FAILED: {TaskState.QUEUED},  # retry transitions back to queued
         TaskState.CANCELLED: set(),
     }
 

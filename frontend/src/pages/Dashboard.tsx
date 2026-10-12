@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AddBox } from "@/components/AddBox";
 import { TaskCard } from "@/components/TaskCard";
 import { FileSelectionModal } from "@/components/selection/FileSelectionModal";
+import { SystemAlerts } from "@/components/SystemAlerts";
 import { useTasks } from "@/hooks/useTasks";
 import { useAuth } from "@/hooks/useAuth";
 import { useMotionPreset } from "@/lib/motion";
@@ -21,6 +22,7 @@ export const Dashboard: React.FC = () => {
     pauseTask,
     resumeTask,
     cancelTask,
+    retryTask,
   } = useTasks(!!user);
 
   const [modalTaskId, setModalTaskId] = useState<string | null>(null);
@@ -30,6 +32,9 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-8">
+      {/* System Edge State Alerts (Offline, Drive full, Drive disconnected) */}
+      <SystemAlerts />
+
       {/* Hero / Add Section */}
       <section className="flex flex-col items-center text-center gap-4">
         <motion.div {...slideFade} className="flex flex-col items-center gap-2 max-w-xl">
@@ -166,6 +171,7 @@ export const Dashboard: React.FC = () => {
                   onPause={pauseTask}
                   onResume={resumeTask}
                   onCancel={cancelTask}
+                  onRetry={retryTask}
                   onSelectFiles={(t) => setModalTaskId(t.id)}
                 />
               ))}

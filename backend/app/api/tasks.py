@@ -162,6 +162,33 @@ async def cancel_task(
         ) from err
 
 
+@router.post("/{task_id}/retry", response_model=TaskActionResponse)
+async def retry_task(
+    task_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    task_service: Annotated[TaskService, Depends(get_task_service)],
+) -> TaskActionResponse:
+    """Retry a failed task, resetting its error and re-queueing it."""
+    try:
+        task = await task_service.retry_task(db=db, user=current_user, task_id=task_id)
+        return TaskActionResponse(
+            id=task.id,
+            state=task.state,
+            message="Task reset and queued for retry",
+        )
+    except TaskNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "not_found", "message": str(err)}},
+        ) from err
+    except InvalidStateTransitionError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "invalid_transition", "message": str(err)}},
+        ) from err
+
+
 @router.post("/{task_id}/start", response_model=TaskResponse)
 async def start_task(
     task_id: uuid.UUID,

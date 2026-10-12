@@ -74,15 +74,24 @@ describe("TaskCard", () => {
     expect(screen.getByText("100.0%")).toBeInTheDocument();
   });
 
-  it("renders failed task error alert", () => {
+  it("renders failed task error alert with retry button and triggers onRetry", async () => {
+    const onRetry = vi.fn().mockResolvedValue(undefined);
     const failedTask: Task = {
       ...baseTask,
       state: "failed",
       error: "Google Drive storage quota exceeded",
     };
-    render(<TaskCard task={failedTask} />);
+    render(<TaskCard task={failedTask} onRetry={onRetry} />);
 
     expect(screen.getByText("Failed")).toBeInTheDocument();
     expect(screen.getByText("Google Drive storage quota exceeded")).toBeInTheDocument();
+
+    const retryBtn = screen.getByLabelText("Retry task button");
+    expect(retryBtn).toBeInTheDocument();
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(onRetry).toHaveBeenCalledWith("task-1234");
+    });
   });
 });
