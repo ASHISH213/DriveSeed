@@ -41,3 +41,7 @@ class DownloadEngine(Protocol):
     async def cancel(self, task_id: str) -> None:
         """Cancel an active or paused download task."""
         ...
+
+    async def enable_sequential_download(self, task_id: str, file_index: int | None = None) -> bool:
+        """Enable sequential piece downloading and prioritize boundary pieces."""
+        ...

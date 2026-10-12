@@ -19,7 +19,7 @@ from app.services.drive import DriveApiStorage
 from app.services.events import TaskEvent, get_event_broadcaster
 from app.services.http_download import HttpEngine
 from app.services.task_state import TaskState, TaskStateMachine
-from app.services.torrent import TorrentEngine
+from app.services.torrent import get_torrent_engine
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
             engine = (
                 ctx.get("torrent_engine")
                 or ctx.get("download_engine")
-                or TorrentEngine(settings=settings)
+                or get_torrent_engine(settings=settings)
             )
         else:
             engine = ctx.get("download_engine") or HttpEngine(allow_local=settings.DEBUG)

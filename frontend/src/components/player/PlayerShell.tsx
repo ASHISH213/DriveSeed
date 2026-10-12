@@ -30,7 +30,9 @@ export interface SubtitleTrack {
 }
 
 export interface PlayerShellProps {
-  fileId: string;
+  fileId?: string;
+  taskId?: string;
+  srcUrl?: string;
   fileName: string;
   mimeType?: string;
   onClose?: () => void;
@@ -44,6 +46,8 @@ interface RippleState {
 
 export const PlayerShell: React.FC<PlayerShellProps> = ({
   fileId,
+  taskId,
+  srcUrl,
   fileName,
   onClose,
 }) => {
@@ -52,7 +56,7 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
   const scrubBarRef = useRef<HTMLDivElement>(null);
 
   // Playback persistence hook
-  const { playbackInfo, savePosition, clearPosition } = usePlayback(fileId);
+  const { playbackInfo, savePosition, clearPosition } = usePlayback(fileId || null);
 
   // Player state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -139,6 +143,7 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
 
   // Fetch available subtitle tracks
   useEffect(() => {
+    if (!fileId) return;
     let isMounted = true;
     const fetchSubtitles = async () => {
       try {
@@ -210,7 +215,7 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
     const video = videoRef.current;
     if (!video) return;
 
-    if (isHlsMode) {
+    if (isHlsMode && fileId) {
       const hlsSrc = `/hls/${encodeURIComponent(fileId)}/index.m3u8`;
       if (Hls.isSupported()) {
         if (hlsRef.current) {
@@ -246,9 +251,14 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
-      video.src = `/stream/${encodeURIComponent(fileId)}`;
+      const directSrc = srcUrl
+        ? srcUrl
+        : taskId
+        ? `/stream/task/${encodeURIComponent(taskId)}`
+        : `/stream/${encodeURIComponent(fileId || "")}`;
+      video.src = directSrc;
     }
-  }, [fileId, isHlsMode]);
+  }, [fileId, taskId, srcUrl, isHlsMode]);
 
   // Video event listeners
   const handleLoadedMetadata = () => {
@@ -302,9 +312,14 @@ export const PlayerShell: React.FC<PlayerShellProps> = ({
   const handleError = async () => {
     setIsBuffering(false);
     // Seamless fallback to HLS transcoding if direct Range streaming failed
-    if (!isHlsMode) {
+    if (!isHlsMode && fileId) {
       showToast("Media requires transcoding: switching to HLS...");
       setIsHlsMode(true);
+      return;
+    }
+
+    if (!fileId) {
+      setPlayerError("Active download buffer is still preparing. Please wait a moment.");
       return;
     }
 

@@ -4,7 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AddBox } from "@/components/AddBox";
 import { TaskCard } from "@/components/TaskCard";
 import { FileSelectionModal } from "@/components/selection/FileSelectionModal";
+import { PlayerModal } from "@/components/player/PlayerModal";
 import { SystemAlerts } from "@/components/SystemAlerts";
+import type { Task } from "@/types/task";
 import { useTasks } from "@/hooks/useTasks";
 import { useAuth } from "@/hooks/useAuth";
 import { useMotionPreset } from "@/lib/motion";
@@ -27,6 +29,7 @@ export const Dashboard: React.FC = () => {
 
   const [modalTaskId, setModalTaskId] = useState<string | null>(null);
   const selectedTaskForModal = modalTaskId ? tasks.find((t) => t.id === modalTaskId) ?? null : null;
+  const [streamingTask, setStreamingTask] = useState<Task | null>(null);
 
   const { slideFade } = useMotionPreset();
 
@@ -173,6 +176,7 @@ export const Dashboard: React.FC = () => {
                   onCancel={cancelTask}
                   onRetry={retryTask}
                   onSelectFiles={(t) => setModalTaskId(t.id)}
+                  onStream={(t) => setStreamingTask(t)}
                 />
               ))}
             </AnimatePresence>
@@ -189,6 +193,13 @@ export const Dashboard: React.FC = () => {
           await startTask(taskId, req);
         }}
       />
+
+      {/* Active Task Streaming Modal */}
+      <PlayerModal
+        task={streamingTask}
+        onClose={() => setStreamingTask(null)}
+      />
     </div>
   );
 };
+

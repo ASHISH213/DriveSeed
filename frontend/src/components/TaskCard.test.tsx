@@ -94,4 +94,17 @@ describe("TaskCard", () => {
       expect(onRetry).toHaveBeenCalledWith("task-1234");
     });
   });
+
+  it("renders Stream Now button for downloading task and triggers onStream", () => {
+    const onStream = vi.fn();
+    render(<TaskCard task={baseTask} onStream={onStream} />);
+
+    const streamBtn = screen.getByTestId("stream-now-btn");
+    expect(streamBtn).toBeInTheDocument();
+    expect(screen.getByText("Stream Now")).toBeInTheDocument();
+
+    fireEvent.click(streamBtn);
+    expect(onStream).toHaveBeenCalledWith(baseTask);
+  });
 });
+

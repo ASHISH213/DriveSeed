@@ -1,20 +1,27 @@
 """Tests for Range streaming proxy API and ProxyStreamer service (RFC 7233)."""
 
+import tempfile
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.api.auth import get_current_user
 from app.api.stream import get_streamer
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
+from app.core.db import get_db_session
 from app.core.security import create_session_token
 from app.interfaces.types import StoredFile
 from app.main import create_app
+from app.models.task import Task
 from app.models.user import User
 from app.services.stream import ProxyStreamer
+from app.services.torrent import TorrentEngine, set_torrent_engine
+from tests.fakes.fake_db import FakeAsyncSession
 from tests.fakes.fake_storage import FakeStorageBackend
+from tests.fakes.fake_torrent import FakeTorrentSession
 
 
 @pytest.fixture
@@ -368,3 +375,132 @@ async def test_stream_concurrency_cap_exceeded(
         assert body["detail"]["error"]["code"] == "stream_cap_exceeded"
 
     limiter.reset()
+
+
+@pytest.mark.asyncio
+async def test_stream_task_media_colab_refusal(test_user: User) -> None:
+    """Hard Rule: Task streaming refuses with HTTP 403 under PROFILE=colab."""
+    colab_settings = Settings(PROFILE="colab")
+    colab_app = create_app(colab_settings)
+    colab_app.dependency_overrides[get_current_user] = lambda: test_user
+    colab_app.dependency_overrides[get_db_session] = lambda: FakeAsyncSession()
+    colab_app.dependency_overrides[get_settings] = lambda: colab_settings
+    transport = ASGITransport(app=colab_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.get(f"/api/stream/task/{uuid.uuid4()}")
+        assert res.status_code == 403
+        assert res.json()["detail"]["error"]["code"] == "MEDIA_PROXY_DISABLED"
+
+
+@pytest.mark.asyncio
+async def test_stream_task_media_not_found(test_user: User) -> None:
+    """Verify streaming a non-existent task returns HTTP 404."""
+    fake_db = FakeAsyncSession()
+    app = create_app(Settings(PROFILE="server"))
+    app.dependency_overrides[get_current_user] = lambda: test_user
+    app.dependency_overrides[get_db_session] = lambda: fake_db
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.get(f"/api/stream/task/{uuid.uuid4()}")
+        assert res.status_code == 404
+        assert res.json()["detail"]["error"]["code"] == "TASK_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_stream_task_media_buffer_too_small(test_user: User) -> None:
+    """Verify HTTP 425 BUFFER_TOO_SMALL when scratch file is missing or <1KB."""
+    fake_db = FakeAsyncSession()
+    task = Task(
+        id=uuid.uuid4(),
+        user_id=test_user.id,
+        source_type="magnet",
+        source_uri="magnet:?xt=urn:btih:da39a3ee5e6b4b0d3255bfef95601890afd80709&dn=Movie.mp4",
+        name="Movie.mp4",
+        state="downloading",
+        size_bytes=100000,
+    )
+    fake_db.add(task)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        settings = Settings(TEMP_DOWNLOAD_DIR=temp_dir, PROFILE="server")
+        app = create_app(settings)
+        app.dependency_overrides[get_current_user] = lambda: test_user
+        app.dependency_overrides[get_db_session] = lambda: fake_db
+        app.dependency_overrides[get_settings] = lambda: settings
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.get(f"/api/stream/task/{task.id}")
+            assert res.status_code == 404  # directory not found yet
+
+            # Create folder with empty/small file (< 1024 bytes)
+            task_dir = Path(temp_dir) / str(task.id)
+            task_dir.mkdir(parents=True, exist_ok=True)
+            (task_dir / "Movie.mp4").write_bytes(b"small" * 10)
+
+            res2 = await client.get(f"/api/stream/task/{task.id}")
+            assert res2.status_code == 425
+            assert res2.json()["detail"]["error"]["code"] == "BUFFER_TOO_SMALL"
+
+
+@pytest.mark.asyncio
+async def test_stream_task_media_success_and_range_requests(test_user: User) -> None:
+    """Verify active task range streaming, Content-Range headers, and 206 Partial Content."""
+    fake_db = FakeAsyncSession()
+    task = Task(
+        id=uuid.uuid4(),
+        user_id=test_user.id,
+        source_type="magnet",
+        source_uri="magnet:?xt=urn:btih:da39a3ee5e6b4b0d3255bfef95601890afd80709&dn=Movie.mp4",
+        name="Movie.mp4",
+        state="downloading",
+        size_bytes=200000,
+    )
+    fake_db.add(task)
+
+    fake_session = FakeTorrentSession()
+    mock_engine = TorrentEngine(
+        settings=Settings(PROFILE="server"), session_factory=lambda: fake_session
+    )
+    set_torrent_engine(mock_engine)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        settings = Settings(TEMP_DOWNLOAD_DIR=temp_dir, PROFILE="server")
+        app = create_app(settings)
+        app.dependency_overrides[get_current_user] = lambda: test_user
+        app.dependency_overrides[get_db_session] = lambda: fake_db
+        app.dependency_overrides[get_settings] = lambda: settings
+
+        task_dir = Path(temp_dir) / str(task.id)
+        task_dir.mkdir(parents=True, exist_ok=True)
+        # 10,000 bytes downloaded so far
+        file_content = b"V" * 10000
+        (task_dir / "Movie.mp4").write_bytes(file_content)
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # 1. Full request
+            res_full = await client.get(f"/api/stream/task/{task.id}")
+            assert res_full.status_code == 200
+            assert res_full.headers["accept-ranges"] == "bytes"
+            assert res_full.headers["content-length"] == "10000"
+            assert res_full.content == file_content
+
+            # 2. Range request within downloaded range
+            res_range = await client.get(
+                f"/api/stream/task/{task.id}", headers={"Range": "bytes=0-1023"}
+            )
+            assert res_range.status_code == 206
+            assert res_range.headers["content-range"] == "bytes 0-1023/200000"
+            assert res_range.headers["content-length"] == "1024"
+            assert res_range.content == file_content[:1024]
+
+            # 3. Seeking past currently downloaded bytes (e.g. 50,000 when 10,000 downloaded)
+            res_unsat = await client.get(
+                f"/api/stream/task/{task.id}", headers={"Range": "bytes=50000-"}
+            )
+            assert res_unsat.status_code == 416
+            assert res_unsat.headers["content-range"] == "bytes */10000"
+
+    set_torrent_engine(None)

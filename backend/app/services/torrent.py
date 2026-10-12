@@ -34,6 +34,7 @@ class TorrentEngine:
         self._session: Any = None
         self._handles: dict[str, Any] = {}
         self._cancelled: set[str] = set()
+        self._sequential_tasks: set[str] = set()
 
     def _check_profile(self) -> None:
         """Enforce hard rule: TorrentEngine is strictly prohibited under PROFILE=colab."""
@@ -149,6 +150,10 @@ class TorrentEngine:
 
         self._handles[task_id] = handle
 
+        # Enable sequential mode immediately if previously requested for this task
+        if task_id in self._sequential_tasks and hasattr(handle, "set_sequential_download"):
+            handle.set_sequential_download(True)
+
         try:
             # 1. Wait for metadata if not present
             while not handle.status().has_metadata:
@@ -180,6 +185,10 @@ class TorrentEngine:
                     if 0 <= idx < num_files:
                         priorities[idx] = 1
                 handle.prioritize_files(priorities)
+
+            # Apply boundary piece prioritization if sequential streaming is active
+            if task_id in self._sequential_tasks:
+                self._apply_boundary_piece_priorities(handle, selected[0] if selected else None)
 
             # 3. Stream download progress
             while True:
@@ -244,6 +253,79 @@ class TorrentEngine:
         handle = self._handles.get(task_id)
         if handle and self._session:
             self._session.remove_torrent(handle)
+
+    def _apply_boundary_piece_priorities(self, handle: Any, file_index: int | None = None) -> None:
+        """Prioritize boundary pieces (beginning and end) to priority 7 for immediate streaming."""
+        if not hasattr(handle, "piece_priority"):
+            return
+
+        try:
+            ti = handle.torrent_file() if hasattr(handle, "torrent_file") else None
+            if not ti or not hasattr(ti, "num_pieces"):
+                return
+
+            num_pieces = ti.num_pieces()
+            if num_pieces <= 0:
+                return
+
+            # If specific file is selected and mapping is available
+            if file_index is not None and hasattr(ti, "files"):
+                storage = ti.files()
+                if hasattr(storage, "file_size") and hasattr(ti, "map_file"):
+                    file_size = storage.file_size(file_index)
+                    if file_size > 0:
+                        first_piece = ti.map_file(file_index, 0, 1).piece
+                        last_piece = ti.map_file(file_index, max(0, file_size - 1), 1).piece
+                        handle.piece_priority(first_piece, 7)
+                        if first_piece + 1 < num_pieces:
+                            handle.piece_priority(first_piece + 1, 7)
+                        handle.piece_priority(last_piece, 7)
+                        return
+
+            # Default boundary pieces across entire torrent: start pieces and end pieces
+            handle.piece_priority(0, 7)
+            if num_pieces > 1:
+                handle.piece_priority(1, 7)
+            handle.piece_priority(num_pieces - 1, 7)
+            if num_pieces > 2:
+                handle.piece_priority(num_pieces - 2, 7)
+        except Exception:
+            pass
+
+    async def enable_sequential_download(self, task_id: str, file_index: int | None = None) -> bool:
+        """Enable sequential piece downloading and prioritize boundary pieces."""
+        self._check_profile()
+        self._sequential_tasks.add(task_id)
+
+        handle = self._handles.get(task_id)
+        if not handle:
+            return False
+
+        if hasattr(handle, "set_sequential_download"):
+            handle.set_sequential_download(True)
+
+        status = handle.status() if hasattr(handle, "status") else None
+        if status and getattr(status, "has_metadata", False):
+            self._apply_boundary_piece_priorities(handle, file_index=file_index)
+
+        return True
+
+
+_torrent_engine_singleton: TorrentEngine | None = None
+
+
+def get_torrent_engine(settings: Settings | None = None) -> TorrentEngine:
+    """Return singleton TorrentEngine instance."""
+    global _torrent_engine_singleton
+    if _torrent_engine_singleton is None:
+        _torrent_engine_singleton = TorrentEngine(settings=settings)
+    return _torrent_engine_singleton
+
+
+def set_torrent_engine(engine: TorrentEngine | None) -> None:
+    """Set or clear the global TorrentEngine instance (useful for test injection)."""
+    global _torrent_engine_singleton
+    _torrent_engine_singleton = engine
 
 
 # Type assertion for static protocol conformance

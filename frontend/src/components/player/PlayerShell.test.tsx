@@ -258,6 +258,18 @@ describe("PlayerShell", () => {
     expect(screen.queryByTestId("hls-badge")).not.toBeInTheDocument();
     expect(screen.getByTestId("stream-mode-toggle")).toHaveTextContent("Direct");
   });
+
+  it("renders player for active downloading task with task stream URL", () => {
+    const { container } = render(
+      <PlayerShell taskId="task-download-99" fileName="LiveStream.mp4" />
+    );
+
+    expect(screen.getByText("LiveStream.mp4")).toBeInTheDocument();
+    const video = container.querySelector("video");
+    expect(video).toBeInTheDocument();
+    expect(video?.getAttribute("src")).toBe("/stream/task/task-download-99");
+  });
 });
+
 
 

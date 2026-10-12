@@ -200,3 +200,48 @@ async def test_magnet_task_runs_through_worker_pipeline_to_drive() -> None:
 
         # Assert local temp folder is deleted
         assert not task_temp_folder.exists()
+
+
+@pytest.mark.asyncio
+async def test_enable_sequential_download_prioritizes_boundary_pieces() -> None:
+    """Verify enable_sequential_download sets sequential mode and piece priority 7 on boundaries."""
+    fake_session = FakeTorrentSession()
+    engine = TorrentEngine(
+        settings=Settings(PROFILE="server"),
+        session_factory=lambda: fake_session,
+    )
+
+    task = Task(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        source_type="magnet",
+        source_uri="magnet:?xt=urn:btih:da39a3ee5e6b4b0d3255bfef95601890afd80709&dn=Ubuntu.iso",
+        name="Ubuntu.iso",
+        state="downloading",
+    )
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        dest = Path(temp_dir)
+        download_iter = engine.start(task=task, selected=[0], dest=dest)
+        first_progress = await anext(download_iter)
+        assert first_progress is not None
+
+        # Enable sequential download while active
+        enabled = await engine.enable_sequential_download(str(task.id))
+        assert enabled is True
+
+        handle = fake_session.handles[0]
+        assert handle.sequential_download is True
+        # Check piece priority 7 set for piece 0, 1, and last piece
+        assert handle.piece_priorities.get(0) == 7
+        assert handle.piece_priorities.get(1) == 7
+        num_pieces = handle.torrent_file().num_pieces()
+        assert handle.piece_priorities.get(num_pieces - 1) == 7
+
+
+def test_enable_sequential_download_refuses_under_colab() -> None:
+    """Hard Rule: sequential download operations raise TorrentEngineDisabledError under colab."""
+    with pytest.raises(TorrentEngineDisabledError, match="strictly disabled"):
+        engine = TorrentEngine(settings=Settings(PROFILE="colab"))
+        # Engine won't even instantiate
+        _ = engine

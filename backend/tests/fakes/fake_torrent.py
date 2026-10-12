@@ -45,6 +45,9 @@ class FakeTorrentInfo:
     def num_files(self) -> int:
         return len(self._files)
 
+    def num_pieces(self) -> int:
+        return max(1, self.total_size() // (1024 * 1024))
+
     def files(self) -> FakeFileStorage:
         return self._storage
 
@@ -93,6 +96,8 @@ class FakeTorrentHandle:
         self.priorities: list[int] = [1] * len(self._files)
         self.step_count = 0
         self.auto_complete_step = auto_complete_step
+        self.sequential_download: bool = False
+        self.piece_priorities: dict[int, int] = {}
 
     def status(self) -> FakeTorrentStatus:
         self.step_count += 1
@@ -111,6 +116,12 @@ class FakeTorrentHandle:
 
     def prioritize_files(self, priorities: list[int]) -> None:
         self.priorities = list(priorities)
+
+    def set_sequential_download(self, val: bool) -> None:
+        self.sequential_download = val
+
+    def piece_priority(self, piece: int, priority: int) -> None:
+        self.piece_priorities[piece] = priority
 
     def pause(self) -> None:
         self._status.paused = True

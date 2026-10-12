@@ -26,10 +26,11 @@ interface TaskCardProps {
   onCancel?: (taskId: string) => Promise<unknown>;
   onRetry?: (taskId: string) => Promise<unknown>;
   onSelectFiles?: (task: Task) => void;
+  onStream?: (task: Task) => void;
 }
 
 export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
-  ({ task, onPause, onResume, onCancel, onRetry, onSelectFiles }, ref) => {
+  ({ task, onPause, onResume, onCancel, onRetry, onSelectFiles, onStream }, ref) => {
     const [isActing, setIsActing] = useState(false);
     const [hasTriggeredConfetti, setHasTriggeredConfetti] = useState(task.state === "completed");
     const { cardHover } = useMotionPreset();
@@ -176,6 +177,20 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
             >
               <FolderDown className="w-3.5 h-3.5" />
               <span>Select Files</span>
+            </button>
+          )}
+
+          {task.state === "downloading" && onStream && (
+            <button
+              type="button"
+              onClick={() => onStream(task)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent-1/20 hover:bg-accent-1/30 text-accent-1 border border-accent-1/40 text-xs font-semibold shadow-glow hover:opacity-95 transition-all"
+              title="Stream while downloading"
+              aria-label="Stream while downloading"
+              data-testid="stream-now-btn"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Stream Now</span>
             </button>
           )}
 

@@ -339,6 +339,10 @@ class HttpEngine:
         if task_id in self._controls:
             self._controls[task_id]["cancelled"] = True
 
+    async def enable_sequential_download(self, task_id: str, file_index: int | None = None) -> bool:
+        """HTTP streams are downloaded sequentially by nature."""
+        return True
+
 
 # Static type verification of protocol adherence
 _conforms: DownloadEngine = HttpEngine()
