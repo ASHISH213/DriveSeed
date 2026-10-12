@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { MoreVertical, Edit3, FolderInput, Trash2 } from "lucide-react";
+import { MoreVertical, Edit3, FolderInput, Trash2, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import type { LibraryItem } from "@/types/library";
 import { formatBytes } from "@/lib/format";
@@ -59,6 +59,19 @@ export const FileItemCard = React.forwardRef<HTMLDivElement, FileItemCardProps>(
                 onClick={() => setShowMenu(false)}
               />
               <div className="absolute right-0 top-6 z-50 w-36 rounded-lg bg-bg-elevated border border-border p-1 shadow-2 flex flex-col text-xs">
+                {(category === "video" || category === "audio") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMenu(false);
+                      onOpen(item);
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface text-text text-left font-medium text-accent-1"
+                  >
+                    <Play className="w-3.5 h-3.5 text-accent-1 fill-accent-1/20" />
+                    <span>Play</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {

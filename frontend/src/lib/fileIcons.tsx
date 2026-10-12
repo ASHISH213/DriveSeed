@@ -56,6 +56,11 @@ export function getFileCategory(name: string, mimeType: string): "folder" | "vid
   return "generic";
 }
 
+export function isMediaFile(name: string, mimeType: string): boolean {
+  const category = getFileCategory(name, mimeType);
+  return category === "video" || category === "audio";
+}
+
 export function renderFileIcon(category: ReturnType<typeof getFileCategory>, className = "w-5 h-5") {
   switch (category) {
     case "folder":

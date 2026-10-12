@@ -29,3 +29,18 @@ export function formatEta(seconds?: number | null): string {
   const remMins = mins % 60;
   return `~${hours}h ${remMins}m`;
 }
+
+export function formatTime(seconds?: number | null): string {
+  if (!seconds || isNaN(seconds) || seconds <= 0) return "0:00";
+  const total = Math.floor(seconds);
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+
+  const paddedSecs = secs.toString().padStart(2, "0");
+  if (hrs > 0) {
+    const paddedMins = mins.toString().padStart(2, "0");
+    return `${hrs}:${paddedMins}:${paddedSecs}`;
+  }
+  return `${mins}:${paddedSecs}`;
+}

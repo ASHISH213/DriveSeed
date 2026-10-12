@@ -1,5 +1,5 @@
 import React from "react";
-import { Edit3, FolderInput, Trash2 } from "lucide-react";
+import { Edit3, FolderInput, Trash2, Play } from "lucide-react";
 import type { LibraryItem } from "@/types/library";
 import { formatBytes } from "@/lib/format";
 import { getFileCategory, renderFileIcon } from "@/lib/fileIcons";
@@ -55,6 +55,17 @@ export const FileItemRow: React.FC<FileItemRowProps> = ({
           className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
+          {(category === "video" || category === "audio") && (
+            <button
+              type="button"
+              onClick={() => onOpen(item)}
+              className="p-1.5 rounded-md hover:bg-surface text-accent-1 transition-colors"
+              title="Play"
+              aria-label="Play"
+            >
+              <Play className="w-3.5 h-3.5 fill-accent-1/20" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onRename(item)}

@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.auth import router as auth_router
 from app.api.events import router as events_router
 from app.api.files import router as files_router
+from app.api.playback import router as playback_router
 from app.api.stream import router as stream_router
 from app.api.tasks import router as tasks_router
 from app.core.config import Settings, get_settings
@@ -72,6 +73,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(tasks_router)
     app.include_router(events_router)
     app.include_router(files_router)
+    app.include_router(playback_router)
     app.include_router(stream_router)
 
     dist_dir = (

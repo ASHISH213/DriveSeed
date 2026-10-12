@@ -48,7 +48,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - [x] **M2.1 Library API and UI.** List/rename/move/delete, folder navigation, breadcrumbs, list and grid views, search by name.
 - [x] **M2.2 Range streaming proxy.** `GET /stream/{file_id}` with correct `206`, `Content-Range`, `Accept-Ranges`; token refresh mid-stream.
   *Done when:* an MP4 in Drive plays in the browser and seeking works.
-- [ ] **M2.3 Player v1.** Vidstack/Video.js shell, resume position saved in `playback`, keyboard shortcuts.
+- [x] **M2.3 Player v1.** Vidstack/Video.js shell, resume position saved in `playback`, keyboard shortcuts.
 - [ ] **M2.4 Storage meter.** `GET /api/storage` and the `StorageRing` component.
 
 ## M3: Polish (about 2 weeks)
@@ -68,4 +68,4 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - Keep a short "what I learned / decisions" list at the bottom of this file so future sessions have context.
 
 ## Decisions log
-- (empty; add dated entries here, e.g. "2026-10-xx: chose SSE over WebSockets for progress")
+- 2026-10-12: implemented custom frosted-glass PlayerShell with native HTML5 media engine, keyboard shortcuts, resume position tracking via `/api/playback/{file_id}`, and skip ripples (M2.3)

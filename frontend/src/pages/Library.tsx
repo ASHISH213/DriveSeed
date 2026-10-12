@@ -14,6 +14,8 @@ import {
   MoveModal,
   DeleteConfirmModal,
 } from "@/components/library/LibraryModals";
+import { PlayerModal } from "@/components/player/PlayerModal";
+import { isMediaFile } from "@/lib/fileIcons";
 import { useMotionPreset } from "@/lib/motion";
 
 export const Library: React.FC = () => {
@@ -40,12 +42,15 @@ export const Library: React.FC = () => {
   const [activeRenameItem, setActiveRenameItem] = useState<LibraryItem | null>(null);
   const [activeMoveItem, setActiveMoveItem] = useState<LibraryItem | null>(null);
   const [activeDeleteItem, setActiveDeleteItem] = useState<LibraryItem | null>(null);
+  const [activePlayFile, setActivePlayFile] = useState<LibraryItem | null>(null);
 
   const { slideFade } = useMotionPreset();
 
   const handleOpenItem = (item: LibraryItem) => {
     if (item.is_folder) {
       navigateToFolder(item.id, item.name);
+    } else if (isMediaFile(item.name, item.mime_type)) {
+      setActivePlayFile(item);
     }
   };
 
@@ -236,6 +241,11 @@ export const Library: React.FC = () => {
             item={activeDeleteItem}
             onClose={() => setActiveDeleteItem(null)}
             onDelete={deleteItem}
+          />
+
+          <PlayerModal
+            file={activePlayFile}
+            onClose={() => setActivePlayFile(null)}
           />
         </>
       )}

@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from app.models.playback import Playback
 from app.models.task import Task
 from app.models.task_file import TaskFile
 from app.models.user import User
@@ -31,6 +32,12 @@ class FakeExecuteResult:
     def scalars(self) -> FakeScalarResult:
         return FakeScalarResult(self._items)
 
+    def scalar_one_or_none(self) -> Any | None:
+        return self._items[0] if self._items else None
+
+    def scalar(self) -> Any | None:
+        return self._items[0] if self._items else None
+
 
 class FakeAsyncSession:
     """In-memory fake AsyncSession for testing services and routers."""
@@ -38,6 +45,7 @@ class FakeAsyncSession:
     def __init__(self) -> None:
         self.users: dict[uuid.UUID, User] = {}
         self.tasks: dict[uuid.UUID, Task] = {}
+        self.playbacks: dict[tuple[uuid.UUID, str], Any] = {}
         self.added: list[Any] = []
 
     def add(self, instance: Any) -> None:
@@ -63,6 +71,20 @@ class FakeAsyncSession:
                     task.files = []
                 if instance not in task.files:
                     task.files.append(instance)
+        else:
+            # Playback or generic
+            user_id = getattr(instance, "user_id", None)
+            file_id = getattr(instance, "file_id", None)
+            if user_id is not None and file_id is not None:
+                self.playbacks[(user_id, file_id)] = instance
+
+    async def delete(self, instance: Any) -> None:
+        if instance in self.added:
+            self.added.remove(instance)
+        user_id = getattr(instance, "user_id", None)
+        file_id = getattr(instance, "file_id", None)
+        if user_id is not None and file_id is not None:
+            self.playbacks.pop((user_id, file_id), None)
 
     async def commit(self) -> None:
         pass
@@ -112,6 +134,15 @@ class FakeAsyncSession:
                 matching.sort(
                     key=lambda x: x.created_at or datetime.min.replace(tzinfo=UTC), reverse=True
                 )
+            elif entity is Playback:
+                user_id_param = next((v for v in params.values() if isinstance(v, uuid.UUID)), None)
+                file_id_param = next((v for v in params.values() if isinstance(v, str)), None)
+                for (uid, fid), p in self.playbacks.items():
+                    if user_id_param and uid != user_id_param:
+                        continue
+                    if file_id_param and fid != file_id_param:
+                        continue
+                    matching.append(p)
             else:
                 # Fallback matching for backward compatibility
                 for u in self.users.values():
