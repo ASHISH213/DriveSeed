@@ -280,6 +280,22 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
                     "Webhook dispatch failed for completed task %s: %s", task_id, hook_err
                 )
 
+            # Dispatch telegram notification if user has linked chat
+            try:
+                from app.services.telegram import TelegramBotService
+
+                tg_service = TelegramBotService(settings=settings)
+                await tg_service.send_task_notification(
+                    db=db,
+                    user_id=task.user_id,
+                    event_name="task.completed",
+                    task=task,
+                )
+            except Exception as tg_err:
+                logger.warning(
+                    "Telegram notification failed for completed task %s: %s", task_id, tg_err
+                )
+
         except Exception as err:
             logger.exception("Pipeline failed for task %s: %s", task_id, err)
             task.state = TaskState.FAILED.value
@@ -306,3 +322,19 @@ async def process_download_task(ctx: dict[str, Any], task_id: str) -> None:
                 )
             except Exception as hook_err:
                 logger.warning("Webhook dispatch failed for failed task %s: %s", task_id, hook_err)
+
+            # Dispatch telegram notification if user has linked chat
+            try:
+                from app.services.telegram import TelegramBotService
+
+                tg_service = TelegramBotService(settings=settings)
+                await tg_service.send_task_notification(
+                    db=db,
+                    user_id=task.user_id,
+                    event_name="task.failed",
+                    task=task,
+                )
+            except Exception as tg_err:
+                logger.warning(
+                    "Telegram notification failed for failed task %s: %s", task_id, tg_err
+                )

@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_TASKS_PER_MINUTE: int = 10
     RATE_LIMIT_AUTH_PER_MINUTE: int = 20
 
+    # Telegram Bot integration
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = ""
+    TELEGRAM_WEBHOOK_SECRET: str = ""
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, value: object) -> list[str]:

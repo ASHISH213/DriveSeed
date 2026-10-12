@@ -147,7 +147,18 @@ class FakeAsyncSession:
                         v == u.google_sub for v in params.values() if isinstance(v, str)
                     )
                     email_match = any(v == u.email for v in params.values() if isinstance(v, str))
-                    if id_match or sub_match or email_match:
+                    tg_match = any(
+                        v == getattr(u, "telegram_chat_id", None)
+                        for v in params.values()
+                        if isinstance(v, str) and getattr(u, "telegram_chat_id", None) is not None
+                    )
+                    token_match = any(
+                        v == getattr(u, "telegram_link_token", None)
+                        for v in params.values()
+                        if isinstance(v, str)
+                        and getattr(u, "telegram_link_token", None) is not None
+                    )
+                    if id_match or sub_match or email_match or tg_match or token_match:
                         matching.append(u)
             elif entity is Task:
                 param_ids = [v for k, v in params.items() if "id" in k and isinstance(v, uuid.UUID)]
