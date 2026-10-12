@@ -1,0 +1,36 @@
+{
+    # Global Caddy configuration
+    email {$ACME_EMAIL:admin@example.com}
+}
+
+{$DOMAIN:localhost} {
+    # Compress non-streaming responses with gzip & zstandard
+    encode zstd gzip
+
+    # Production security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # Disable response buffering for Server-Sent Events (SSE) and media Range streaming
+    @streaming {
+        path /stream/*
+        path /api/stream/*
+        path /api/events
+    }
+
+    handle @streaming {
+        reverse_proxy api:8000 {
+            flush_interval -1
+        }
+    }
+
+    # Reverse proxy all application traffic to FastAPI backend
+    handle {
+        reverse_proxy api:8000
+    }
+}

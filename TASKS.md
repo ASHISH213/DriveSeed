@@ -55,7 +55,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - [x] **M3.1 File selection modal** with checkboxes, total size, Drive free-space check and folder picker.
 - [x] **M3.2 Error and edge states** from `DESIGN.md` section 8 (Drive full, disconnected, failed task with retry).
 - [x] **M3.3 Rate limits and per-user caps** for tasks and streams.
-- [ ] **M3.4 Deploy** to a VPS or home server with Caddy and TLS; document in README.
+- [x] **M3.4 Deploy** to a VPS or home server with Caddy and TLS; document in README.
 
 ## Later phases (break these into small tasks when you reach them)
 - **M3b Design system and motion:** tokens finalised, Storybook, all signature animations from `DESIGN.md` section 6, command palette, PWA, performance pass.
@@ -73,3 +73,4 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - 2026-10-12: implemented POST /api/tasks/{task_id}/start with pre-flight Google Drive free-space check, FileTree with checkboxes and search, FolderPicker destination picker, and FileSelectionModal (M3.1)
 - 2026-10-12: implemented POST /api/tasks/{task_id}/retry, TaskCard retry button, and SystemAlerts handling offline, Drive full (0 B free), almost full (>=90%), and Drive disconnected states (M3.2)
 - 2026-10-12: implemented SlidingWindowRateLimiter (10 req/min for tasks, 20 req/min for auth), StreamConcurrencyLimiter (2 distinct files per user with connection pooling), and per-user active task limit (max 3 concurrent active tasks on create and retry) with HTTP 429 Retry-After responses (M3.3)
+- 2026-10-12: implemented production deployment configuration with multi-stage Dockerfile (SPA build + runtime), Caddyfile with automatic TLS and unbuffered streaming (flush_interval -1), docker-compose with Caddy, API, worker, Postgres and Redis, and documented full VPS/home server setup in README (M3.4)

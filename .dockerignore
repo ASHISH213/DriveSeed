@@ -1,0 +1,23 @@
+# Version control & local environment
+.git
+.github
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Node / Frontend
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# Temporary files & tests
+temp/
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+htmlcov/
+*.log
+.env

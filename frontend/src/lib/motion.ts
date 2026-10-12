@@ -52,5 +52,13 @@ export function useMotionPreset() {
       : {
           whileHover: { y: -2, transition: spring.snappy },
         },
+    modal: {
+      initial: { opacity: 0, scale: shouldReduceMotion ? 1 : 0.95, y: shouldReduceMotion ? 0 : 8 },
+      animate: { opacity: 1, scale: 1, y: 0 },
+      exit: { opacity: 0, scale: shouldReduceMotion ? 1 : 0.95, y: shouldReduceMotion ? 0 : 8 },
+      transition: shouldReduceMotion
+        ? { duration: duration.fast }
+        : { duration: duration.base, ease: ease.out },
+    },
   };
 }

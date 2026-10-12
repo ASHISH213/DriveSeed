@@ -20,6 +20,7 @@ export interface TaskStartRequest {
 
 export interface TaskFile {
   id: string;
+  task_id?: string;
   path: string;
   size_bytes: number;
   selected: boolean;
