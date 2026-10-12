@@ -56,9 +56,14 @@ const config: Config = {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(100%)" },
         },
+        sheen: {
+          "0%": { transform: "translateX(-150%) skewX(-20deg)" },
+          "100%": { transform: "translateX(250%) skewX(-20deg)" },
+        },
       },
       animation: {
         shimmer: "shimmer 2s infinite ease-in-out",
+        sheen: "sheen 2.2s infinite cubic-bezier(0.4, 0, 0.2, 1)",
       },
     },
   },

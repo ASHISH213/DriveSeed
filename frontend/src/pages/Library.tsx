@@ -198,16 +198,18 @@ export const Library: React.FC = () => {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {files.map((item) => (
-                    <FileItemRow
-                      key={item.id}
-                      item={item}
-                      onOpen={handleOpenItem}
-                      onRename={setActiveRenameItem}
-                      onMove={setActiveMoveItem}
-                      onDelete={setActiveDeleteItem}
-                    />
-                  ))}
+                  <AnimatePresence mode="popLayout">
+                    {files.map((item) => (
+                      <FileItemRow
+                        key={item.id}
+                        item={item}
+                        onOpen={handleOpenItem}
+                        onRename={setActiveRenameItem}
+                        onMove={setActiveMoveItem}
+                        onDelete={setActiveDeleteItem}
+                      />
+                    ))}
+                  </AnimatePresence>
                 </div>
               )}
             </div>

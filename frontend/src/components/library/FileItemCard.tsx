@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import type { LibraryItem } from "@/types/library";
 import { formatBytes } from "@/lib/format";
 import { getFileCategory, renderFileIcon } from "@/lib/fileIcons";
-import { useMotionPreset } from "@/lib/motion";
+import { useMotionPreset, spring } from "@/lib/motion";
 
 interface FileItemCardProps {
   item: LibraryItem;
@@ -25,6 +25,8 @@ export const FileItemCard = React.forwardRef<HTMLDivElement, FileItemCardProps>(
         ref={ref}
         {...cardHover}
         layout
+        layoutId={`library-item-${item.id}`}
+        transition={spring.soft}
         data-testid={`file-card-${item.id}`}
         className="group relative flex flex-col justify-between p-4 rounded-xl bg-bg-elevated border border-border hover:border-accent-1/50 transition-all shadow-1 cursor-pointer select-none"
         onClick={() => onOpen(item)}

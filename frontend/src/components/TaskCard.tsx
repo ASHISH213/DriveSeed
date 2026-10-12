@@ -5,7 +5,6 @@ import {
   Pause,
   Play,
   X,
-  CheckCircle2,
   AlertTriangle,
   CloudUpload,
   Clock,
@@ -16,7 +15,9 @@ import {
 import { motion } from "framer-motion";
 import type { Task } from "@/types/task";
 import { ProgressBar } from "./ProgressBar";
-import { useMotionPreset } from "@/lib/motion";
+import { AnimatedCheckmark } from "./AnimatedCheckmark";
+import { ConfettiBurst } from "./ConfettiBurst";
+import { useMotionPreset, spring } from "@/lib/motion";
 
 interface TaskCardProps {
   task: Task;
@@ -30,6 +31,7 @@ interface TaskCardProps {
 export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
   ({ task, onPause, onResume, onCancel, onRetry, onSelectFiles }, ref) => {
     const [isActing, setIsActing] = useState(false);
+    const [hasTriggeredConfetti, setHasTriggeredConfetti] = useState(task.state === "completed");
     const { cardHover } = useMotionPreset();
 
   const handleAction = async (action: () => Promise<unknown>) => {
@@ -89,9 +91,12 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
         );
       case "completed":
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-success/15 text-success border border-success/30">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Completed
+          <span className="relative flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-success/15 text-success border border-success/30">
+            <AnimatedCheckmark className="w-3.5 h-3.5 text-success" />
+            <span>Completed</span>
+            {hasTriggeredConfetti && (
+              <ConfettiBurst onComplete={() => setHasTriggeredConfetti(false)} />
+            )}
           </span>
         );
       case "paused":
@@ -131,6 +136,7 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
       ref={ref}
       {...cardHover}
       layout
+      transition={spring.soft}
       data-testid={`task-card-${task.id}`}
       className="p-4 sm:p-5 rounded-xl bg-bg-elevated border border-border hover:border-border/80 transition-colors shadow-1 flex flex-col gap-4"
     >
