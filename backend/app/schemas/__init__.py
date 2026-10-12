@@ -9,6 +9,7 @@ from app.schemas.task import (
     TaskCreateRequest,
     TaskFileResponse,
     TaskResponse,
+    TaskStartRequest,
 )
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     "TaskCreateRequest",
     "TaskFileResponse",
     "TaskResponse",
+    "TaskStartRequest",
     "UserResponse",
 ]

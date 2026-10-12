@@ -52,7 +52,7 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 - [x] **M2.4 Storage meter.** `GET /api/storage` and the `StorageRing` component.
 
 ## M3: Polish (about 2 weeks)
-- [ ] **M3.1 File selection modal** with checkboxes, total size, Drive free-space check and folder picker.
+- [x] **M3.1 File selection modal** with checkboxes, total size, Drive free-space check and folder picker.
 - [ ] **M3.2 Error and edge states** from `DESIGN.md` section 8 (Drive full, disconnected, failed task with retry).
 - [ ] **M3.3 Rate limits and per-user caps** for tasks and streams.
 - [ ] **M3.4 Deploy** to a VPS or home server with Caddy and TLS; document in README.
@@ -70,3 +70,4 @@ Work one task at a time. For each task: ask the agent for a plan, approve it, le
 ## Decisions log
 - 2026-10-12: implemented custom frosted-glass PlayerShell with native HTML5 media engine, keyboard shortcuts, resume position tracking via `/api/playback/{file_id}`, and skip ripples (M2.3)
 - 2026-10-12: implemented GET /api/storage endpoint and animated StorageRing component with adaptive color thresholds (<75% success, 75-90% warning, >=90% danger) and hover breakdown (M2.4)
+- 2026-10-12: implemented POST /api/tasks/{task_id}/start with pre-flight Google Drive free-space check, FileTree with checkboxes and search, FolderPicker destination picker, and FileSelectionModal (M3.1)

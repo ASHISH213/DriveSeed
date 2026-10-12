@@ -4,12 +4,19 @@
 
 export type TaskState =
   | "queued"
+  | "fetching_metadata"
+  | "awaiting_selection"
   | "downloading"
   | "uploading"
   | "completed"
   | "paused"
   | "failed"
   | "cancelled";
+
+export interface TaskStartRequest {
+  selected_file_ids?: string[];
+  destination_folder_id?: string | null;
+}
 
 export interface TaskFile {
   id: string;

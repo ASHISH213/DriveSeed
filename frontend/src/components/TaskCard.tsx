@@ -10,6 +10,7 @@ import {
   CloudUpload,
   Clock,
   Loader2,
+  FolderDown,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Task } from "@/types/task";
@@ -21,10 +22,11 @@ interface TaskCardProps {
   onPause?: (taskId: string) => Promise<unknown>;
   onResume?: (taskId: string) => Promise<unknown>;
   onCancel?: (taskId: string) => Promise<unknown>;
+  onSelectFiles?: (task: Task) => void;
 }
 
 export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
-  ({ task, onPause, onResume, onCancel }, ref) => {
+  ({ task, onPause, onResume, onCancel, onSelectFiles }, ref) => {
     const [isActing, setIsActing] = useState(false);
     const { cardHover } = useMotionPreset();
 
@@ -47,12 +49,28 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
     (task.state === "downloading" ||
       task.state === "queued" ||
       task.state === "paused" ||
-      task.state === "uploading") &&
+      task.state === "uploading" ||
+      task.state === "awaiting_selection" ||
+      task.state === "fetching_metadata") &&
     !!onCancel;
 
   // Status Badge Rendering
   const renderBadge = () => {
     switch (task.state) {
+      case "awaiting_selection":
+        return (
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-accent-1/20 text-accent-1 border border-accent-1/40">
+            <FolderDown className="w-3.5 h-3.5" />
+            Awaiting Selection
+          </span>
+        );
+      case "fetching_metadata":
+        return (
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-accent-2/15 text-accent-2 border border-accent-2/30">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            Fetching Metadata
+          </span>
+        );
       case "downloading":
         return (
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-accent-1/15 text-accent-1 border border-accent-1/30">
@@ -141,6 +159,17 @@ export const TaskCard = React.forwardRef<HTMLDivElement, TaskCardProps>(
 
         <div className="flex items-center gap-2 flex-shrink-0">
           {renderBadge()}
+
+          {task.state === "awaiting_selection" && onSelectFiles && (
+            <button
+              type="button"
+              onClick={() => onSelectFiles(task)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-accent-grad text-white text-xs font-semibold shadow-glow hover:opacity-95 transition-opacity"
+            >
+              <FolderDown className="w-3.5 h-3.5" />
+              <span>Select Files</span>
+            </button>
+          )}
 
           {/* Action buttons */}
           <div className="flex items-center gap-1 ml-1">

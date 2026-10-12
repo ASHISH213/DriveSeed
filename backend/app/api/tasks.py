@@ -13,8 +13,13 @@ from app.schemas.task import (
     TaskActionResponse,
     TaskCreateRequest,
     TaskResponse,
+    TaskStartRequest,
 )
-from app.services.task import TaskNotFoundError, TaskService
+from app.services.task import (
+    InsufficientStorageError,
+    TaskNotFoundError,
+    TaskService,
+)
 from app.services.task_state import InvalidStateTransitionError
 
 router = APIRouter(prefix="/api/tasks", tags=["Tasks"])
@@ -154,4 +159,38 @@ async def cancel_task(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "invalid_transition", "message": str(err)}},
+        ) from err
+
+
+@router.post("/{task_id}/start", response_model=TaskResponse)
+async def start_task(
+    task_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    task_service: Annotated[TaskService, Depends(get_task_service)],
+    request: TaskStartRequest | None = None,
+) -> TaskResponse:
+    """Start task with chosen files and destination folder, verifying Drive free space."""
+    try:
+        task = await task_service.start_task(
+            db=db,
+            user=current_user,
+            task_id=task_id,
+            request=request,
+        )
+        return TaskResponse.model_validate(task)
+    except TaskNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "not_found", "message": str(err)}},
+        ) from err
+    except InvalidStateTransitionError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "invalid_transition", "message": str(err)}},
+        ) from err
+    except InsufficientStorageError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "insufficient_storage", "message": str(err)}},
         ) from err

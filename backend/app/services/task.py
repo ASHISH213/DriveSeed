@@ -12,9 +12,11 @@ from sqlalchemy.orm import selectinload
 from app.interfaces.queue import TaskQueue
 from app.models.task import Task
 from app.models.user import User
-from app.schemas.task import TaskCreateRequest
+from app.schemas.task import TaskCreateRequest, TaskStartRequest
 from app.services.events import EventBroadcaster, TaskEvent, get_event_broadcaster
+from app.services.storage import StorageService
 from app.services.task_state import (
+    InvalidStateTransitionError,
     TaskState,
     TaskStateMachine,
 )
@@ -28,6 +30,18 @@ class TaskNotFoundError(Exception):
         super().__init__(f"Task with ID {task_id} was not found.")
 
 
+class InsufficientStorageError(Exception):
+    """Exception raised when available Drive free space is smaller than selected download size."""
+
+    def __init__(self, required_bytes: int, free_bytes: int) -> None:
+        self.required_bytes = required_bytes
+        self.free_bytes = free_bytes
+        super().__init__(
+            f"Insufficient Drive storage: requires {required_bytes} bytes, "
+            f"but only {free_bytes} bytes are free."
+        )
+
+
 class TaskService:
     """Service encapsulating task queries, mutations, and transitions."""
 
@@ -35,9 +49,18 @@ class TaskService:
         self,
         queue: TaskQueue | None = None,
         broadcaster: EventBroadcaster | None = None,
+        storage_service: StorageService | None = None,
     ) -> None:
         self.queue = queue
         self._broadcaster = broadcaster
+        self._storage_service = storage_service
+
+    @property
+    def storage_service(self) -> StorageService:
+        """Get or lazily initialize the StorageService."""
+        if self._storage_service is None:
+            self._storage_service = StorageService()
+        return self._storage_service
 
     @property
     def broadcaster(self) -> EventBroadcaster:
@@ -206,5 +229,54 @@ class TaskService:
         TaskStateMachine.transition(task, TaskState.CANCELLED)
         await db.commit()
         await db.refresh(task)
+        await self._emit_event(task)
+        return task
+
+    async def start_task(
+        self,
+        db: AsyncSession,
+        user: User,
+        task_id: uuid.UUID,
+        request: TaskStartRequest | None = None,
+    ) -> Task:
+        """Apply file selection, verify Drive free space, and transition task to DOWNLOADING."""
+        task = await self.get_task(db, user, task_id)
+
+        # Allow start from AWAITING_SELECTION or QUEUED
+        if task.state not in (TaskState.AWAITING_SELECTION.value, TaskState.QUEUED.value):
+            if task.state != TaskState.DOWNLOADING.value:
+                raise InvalidStateTransitionError(
+                    current_state=task.state,
+                    target_state=TaskState.DOWNLOADING.value,
+                )
+
+        # 1. Update file selection if specific file IDs provided
+        if request and request.selected_file_ids is not None:
+            selected_ids = set(request.selected_file_ids)
+            for f in task.files:
+                f.selected = f.id in selected_ids
+
+        # Calculate total selected size
+        selected_size = sum(f.size_bytes for f in task.files if f.selected)
+
+        # 2. Pre-flight check of Drive free space
+        if user.drive_refresh_token_enc and selected_size > 0:
+            quota = await self.storage_service.get_storage_quota(user)
+            if selected_size > quota.free_bytes:
+                raise InsufficientStorageError(
+                    required_bytes=selected_size,
+                    free_bytes=quota.free_bytes,
+                )
+
+        # 3. Transition to DOWNLOADING if not already
+        if task.state != TaskState.DOWNLOADING.value:
+            TaskStateMachine.transition(task, TaskState.DOWNLOADING)
+
+        await db.commit()
+        await db.refresh(task)
+
+        if self.queue:
+            await self.queue.enqueue("process_download_task", task_id=str(task.id))
+
         await self._emit_event(task)
         return task

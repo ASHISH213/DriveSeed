@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Sparkles, Radio, AlertCircle, RefreshCw, LogIn } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AddBox } from "@/components/AddBox";
 import { TaskCard } from "@/components/TaskCard";
+import { FileSelectionModal } from "@/components/selection/FileSelectionModal";
 import { useTasks } from "@/hooks/useTasks";
 import { useAuth } from "@/hooks/useAuth";
 import { useMotionPreset } from "@/lib/motion";
@@ -16,10 +17,14 @@ export const Dashboard: React.FC = () => {
     isSseConnected,
     refreshTasks,
     createTask,
+    startTask,
     pauseTask,
     resumeTask,
     cancelTask,
   } = useTasks(!!user);
+
+  const [modalTaskId, setModalTaskId] = useState<string | null>(null);
+  const selectedTaskForModal = modalTaskId ? tasks.find((t) => t.id === modalTaskId) ?? null : null;
 
   const { slideFade } = useMotionPreset();
 
@@ -161,12 +166,23 @@ export const Dashboard: React.FC = () => {
                   onPause={pauseTask}
                   onResume={resumeTask}
                   onCancel={cancelTask}
+                  onSelectFiles={(t) => setModalTaskId(t.id)}
                 />
               ))}
             </AnimatePresence>
           </div>
         </section>
       )}
+
+      {/* File Selection Modal */}
+      <FileSelectionModal
+        isOpen={!!selectedTaskForModal}
+        task={selectedTaskForModal}
+        onClose={() => setModalTaskId(null)}
+        onStart={async (taskId, req) => {
+          await startTask(taskId, req);
+        }}
+      />
     </div>
   );
 };

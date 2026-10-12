@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Task, TaskCreateRequest, TaskEvent } from "@/types/task";
+import type { Task, TaskCreateRequest, TaskEvent, TaskStartRequest } from "@/types/task";
 import { useEvents } from "./useEvents";
 
 export function useTasks(userLoggedIn: boolean = true) {
@@ -103,6 +103,25 @@ export function useTasks(userLoggedIn: boolean = true) {
     return created;
   };
 
+  const startTask = async (taskId: string, req?: TaskStartRequest): Promise<Task> => {
+    setError(null);
+    const res = await fetch(`/api/tasks/${taskId}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req || {}),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      const msg = errBody?.detail?.error?.message || errBody?.detail || "Failed to start task";
+      throw new Error(msg);
+    }
+
+    const updated = (await res.json()) as Task;
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+    return updated;
+  };
+
   const pauseTask = async (taskId: string) => {
     const res = await fetch(`/api/tasks/${taskId}/pause`, { method: "POST" });
     if (!res.ok) throw new Error("Failed to pause task");
@@ -134,6 +153,7 @@ export function useTasks(userLoggedIn: boolean = true) {
     isSseConnected,
     refreshTasks: fetchTasks,
     createTask,
+    startTask,
     pauseTask,
     resumeTask,
     cancelTask,

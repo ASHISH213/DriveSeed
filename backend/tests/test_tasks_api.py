@@ -7,12 +7,16 @@ from datetime import UTC, datetime
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.api.tasks import get_task_service
 from app.core.db import get_db_session
-from app.core.security import create_session_token
+from app.core.security import create_session_token, encrypt_token
 from app.main import create_app
 from app.models.task import Task
 from app.models.user import User
+from app.services.storage import StorageService
+from app.services.task import TaskService
 from tests.fakes.fake_db import FakeAsyncSession
+from tests.fakes.fake_storage import FakeStorageBackend
 
 
 @pytest.fixture
@@ -22,13 +26,19 @@ def fake_db() -> FakeAsyncSession:
 
 
 @pytest.fixture
+def fake_storage() -> FakeStorageBackend:
+    """Fixture providing a fake storage backend."""
+    return FakeStorageBackend()
+
+
+@pytest.fixture
 def test_user(fake_db: FakeAsyncSession) -> User:
     """Fixture providing an existing authenticated user in the fake db."""
     user = User(
         id=uuid.uuid4(),
         google_sub="sub-test-tasks-user",
         email="tasker@example.com",
-        drive_refresh_token_enc="fake_encrypted_token",
+        drive_refresh_token_enc=encrypt_token("fake_refresh_token"),
         drive_root_folder_id="drive-root-folder-123",
         created_at=datetime.now(UTC),
     )
@@ -44,14 +54,17 @@ def auth_headers_and_cookies(test_user: User) -> dict[str, str]:
 
 
 @pytest.fixture
-def app_with_db(fake_db: FakeAsyncSession):
-    """FastAPI app instance with overridden get_db_session dependency."""
+def app_with_db(fake_db: FakeAsyncSession, fake_storage: FakeStorageBackend):
+    """FastAPI app instance with overridden get_db_session and get_task_service dependencies."""
     app = create_app()
 
     async def override_get_db() -> AsyncGenerator[FakeAsyncSession, None]:
         yield fake_db
 
     app.dependency_overrides[get_db_session] = override_get_db
+    app.dependency_overrides[get_task_service] = lambda: TaskService(
+        storage_service=StorageService(storage=fake_storage)
+    )
     return app
 
 
@@ -264,3 +277,113 @@ async def test_task_lifecycle_transitions(
         resume_cancelled_resp = await client.post(f"/api/tasks/{task.id}/resume")
         assert resume_cancelled_resp.status_code == 400
         assert resume_cancelled_resp.json()["detail"]["error"]["code"] == "invalid_transition"
+
+
+@pytest.mark.asyncio
+async def test_task_start_with_file_selection(
+    app_with_db,
+    fake_db: FakeAsyncSession,
+    test_user: User,
+    auth_headers_and_cookies: dict[str, str],
+) -> None:
+    """Verify starting task with subset of chosen files updates selection and begins download."""
+    from app.models.task_file import TaskFile
+
+    task = Task(
+        user_id=test_user.id,
+        source_type="magnet",
+        source_uri="magnet:?xt=urn:btih:fileselect",
+        name="multi-file-torrent",
+        state="awaiting_selection",
+        progress=0.0,
+    )
+    fake_db.add(task)
+
+    f1 = TaskFile(
+        task_id=task.id,
+        path="video1.mp4",
+        size_bytes=100 * 1024 * 1024,
+        selected=True,
+        state="pending",
+    )
+    f2 = TaskFile(
+        task_id=task.id,
+        path="video2.mp4",
+        size_bytes=200 * 1024 * 1024,
+        selected=True,
+        state="pending",
+    )
+    fake_db.add(f1)
+    fake_db.add(f2)
+
+    transport = ASGITransport(app=app_with_db)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=auth_headers_and_cookies
+    ) as client:
+        # Start only selecting f1
+        res = await client.post(
+            f"/api/tasks/{task.id}/start",
+            json={"selected_file_ids": [str(f1.id)]},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["state"] == "downloading"
+
+        files = {f["path"]: f["selected"] for f in data["files"]}
+        assert files["video1.mp4"] is True
+        assert files["video2.mp4"] is False
+
+
+@pytest.mark.asyncio
+async def test_task_start_insufficient_storage_rejected(
+    app_with_db,
+    fake_db: FakeAsyncSession,
+    test_user: User,
+    auth_headers_and_cookies: dict[str, str],
+) -> None:
+    """Verify pre-flight check rejects task start when selected size exceeds Drive space."""
+    from app.api.tasks import get_task_service
+    from app.interfaces.types import StorageQuota
+    from app.models.task_file import TaskFile
+    from app.services.storage import StorageService
+    from app.services.task import TaskService
+    from tests.fakes.fake_storage import FakeStorageBackend
+
+    class TinyStorage(FakeStorageBackend):
+        async def quota(self, user: User) -> StorageQuota:
+            # 1 MB free space
+            return StorageQuota(
+                used_bytes=14 * 1024 * 1024 * 1024 + 1023 * 1024 * 1024,
+                total_bytes=15 * 1024 * 1024 * 1024,
+            )
+
+    custom_task_service = TaskService(storage_service=StorageService(storage=TinyStorage()))
+    app_with_db.dependency_overrides[get_task_service] = lambda: custom_task_service
+
+    task = Task(
+        user_id=test_user.id,
+        source_type="magnet",
+        source_uri="magnet:?xt=urn:btih:toobig",
+        name="huge-torrent",
+        state="awaiting_selection",
+    )
+    fake_db.add(task)
+
+    huge_file = TaskFile(
+        task_id=task.id,
+        path="huge_video.mkv",
+        size_bytes=10 * 1024 * 1024 * 1024,  # 10 GB
+        selected=True,
+    )
+    fake_db.add(huge_file)
+
+    transport = ASGITransport(app=app_with_db)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", cookies=auth_headers_and_cookies
+    ) as client:
+        res = await client.post(
+            f"/api/tasks/{task.id}/start",
+            json={"selected_file_ids": [str(huge_file.id)]},
+        )
+        assert res.status_code == 400
+        assert res.json()["detail"]["error"]["code"] == "insufficient_storage"

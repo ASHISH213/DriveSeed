@@ -210,15 +210,18 @@ async def test_playback_user_isolation(app_with_playback):
     """Playback position for user 1 does not affect user 2."""
     app, token1, token2 = app_with_playback
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-        cookies={"driveseed_session": token1},
-    ) as client1, AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-        cookies={"driveseed_session": token2},
-    ) as client2:
+    async with (
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            cookies={"driveseed_session": token1},
+        ) as client1,
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            cookies={"driveseed_session": token2},
+        ) as client2,
+    ):
         # User 1 watches file to 500s
         await client1.put(
             "/api/playback/shared_movie",

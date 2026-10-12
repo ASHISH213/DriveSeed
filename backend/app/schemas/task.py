@@ -14,6 +14,19 @@ class TaskCreateRequest(BaseModel):
     name: str | None = Field(default=None, description="Optional custom name for the task")
 
 
+class TaskStartRequest(BaseModel):
+    """Payload to start a task with selected files and destination folder."""
+
+    selected_file_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        description="IDs of files chosen for download. Defaults to all files.",
+    )
+    destination_folder_id: str | None = Field(
+        default=None,
+        description="Optional destination Google Drive folder ID",
+    )
+
+
 class TaskFileResponse(BaseModel):
     """File item inside a task."""
 
@@ -22,9 +35,9 @@ class TaskFileResponse(BaseModel):
     id: uuid.UUID
     task_id: uuid.UUID
     path: str
-    size_bytes: int
-    selected: bool
-    state: str
+    size_bytes: int = 0
+    selected: bool = True
+    state: str = "pending"
     drive_file_id: str | None = None
 
 
@@ -39,8 +52,8 @@ class TaskResponse(BaseModel):
     source_uri: str
     info_hash: str | None = None
     name: str
-    state: str
-    progress: float
+    state: str = "queued"
+    progress: float = 0.0
     size_bytes: int | None = None
     error: str | None = None
     created_at: datetime
